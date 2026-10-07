@@ -4,6 +4,10 @@ RUN a2enmod mpm_prefork
 RUN docker-php-ext-install pdo pdo_mysql mysqli
 RUN a2enmod rewrite headers
 
+# Build-time guard: Apache refuses to start when more than one MPM is loaded
+# (AH00534). Failing here means the image can never reach Railway broken.
+RUN apachectl configtest && apachectl -M
+
 # Copy the project into Apache's document root
 WORKDIR /var/www/html
 COPY . /var/www/html/
