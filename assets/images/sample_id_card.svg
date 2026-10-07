@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="100%" height="100%">
+  <defs>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B365D"/>
+      <stop offset="60%" stop-color="#0F213D"/>
+      <stop offset="100%" stop-color="#091424"/>
+    </linearGradient>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00A8B5"/>
+      <stop offset="100%" stop-color="#4CD9A1"/>
+    </linearGradient>
+    <linearGradient id="chipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Card Background with rounded corners & shadow -->
+  <rect x="15" y="15" width="370" height="220" rx="14" fill="url(#cardGrad)" stroke="rgba(0,168,181,0.4)" stroke-width="1.5" filter="url(#shadow)"/>
+  
+  <!-- Header Banner -->
+  <path d="M 15 29 A 14 14 0 0 1 29 15 L 371 15 A 14 14 0 0 1 385 29 L 385 62 L 15 62 Z" fill="url(#headerGrad)"/>
+  
+  <!-- Header Text -->
+  <text x="35" y="38" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="13" fill="#FFFFFF" letter-spacing="1">جامعة حائل - UNIVERSITY OF HAIL</text>
+  <text x="35" y="52" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="10" fill="#0F213D">بطاقة الهوية الجامعية الذكية | SMART STUDENT ID</text>
+  
+  <!-- University Emblem / Logo Vector -->
+  <circle cx="348" cy="38" r="15" fill="rgba(255,255,255,0.2)" stroke="#FFFFFF" stroke-width="1.5"/>
+  <polygon points="348,28 357,43 339,43" fill="#FFFFFF"/>
+  <circle cx="348" cy="39" r="3" fill="#00A8B5"/>
+
+  <!-- Photo Box -->
+  <rect x="35" y="80" width="85" height="105" rx="8" fill="#1E293B" stroke="#00A8B5" stroke-width="1.5"/>
+  <!-- Avatar Silhouette -->
+  <circle cx="77" cy="115" r="18" fill="#64748B"/>
+  <path d="M 52 165 C 52 142 102 142 102 165 Z" fill="#64748B"/>
+
+  <!-- EMV Gold Smart Chip -->
+  <rect x="135" y="82" width="36" height="28" rx="4" fill="url(#chipGrad)" stroke="#B45309" stroke-width="1"/>
+  <line x1="135" y1="96" x2="171" y2="96" stroke="#B45309" stroke-width="0.8"/>
+  <line x1="147" y1="82" x2="147" y2="110" stroke="#B45309" stroke-width="0.8"/>
+  <line x1="159" y1="82" x2="159" y2="110" stroke="#B45309" stroke-width="0.8"/>
+
+  <!-- NFC / Contactless Icon -->
+  <path d="M 185 86 A 8 8 0 0 1 185 106 M 190 82 A 13 13 0 0 1 190 110 M 195 78 A 18 18 0 0 1 195 114" fill="none" stroke="#4CD9A1" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Student Details (Arabic & English) -->
+  <text x="135" y="130" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="13" fill="#FFFFFF">مرام الحربي</text>
+  <text x="135" y="145" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="10" fill="#94A3B8">Maram Al-Harbi</text>
+  
+  <text x="135" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="10" fill="#CBD5E1">الكلية: <tspan fill="#4CD9A1" font-weight="600">علوم وهندسة الحاسب</tspan></text>
+  <text x="135" y="179" font-family="system-ui, -apple-system, sans-serif" font-size="10" fill="#CBD5E1">التخصص: <tspan fill="#FFFFFF">هندسة البرمجيات</tspan></text>
+
+  <!-- Bottom Bar: Student ID Badge & Barcode -->
+  <rect x="35" y="195" width="170" height="26" rx="6" fill="rgba(0,168,181,0.15)" stroke="#00A8B5" stroke-width="1"/>
+  <text x="45" y="212" font-family="monospace" font-weight="800" font-size="13" fill="#4CD9A1" letter-spacing="1.5">S000000001</text>
+
+  <!-- Barcode Simulation -->
+  <g transform="translate(230, 192)" fill="#FFFFFF">
+    <rect x="0" y="0" width="3" height="28"/>
+    <rect x="5" y="0" width="1.5" height="28"/>
+    <rect x="9" y="0" width="4" height="28"/>
+    <rect x="15" y="0" width="2" height="28"/>
+    <rect x="20" y="0" width="5" height="28"/>
+    <rect x="27" y="0" width="2" height="28"/>
+    <rect x="31" y="0" width="3" height="28"/>
+    <rect x="36" y="0" width="1.5" height="28"/>
+    <rect x="40" y="0" width="4" height="28"/>
+    <rect x="47" y="0" width="2" height="28"/>
+    <rect x="52" y="0" width="5" height="28"/>
+    <rect x="59" y="0" width="2" height="28"/>
+    <rect x="64" y="0" width="3" height="28"/>
+    <rect x="70" y="0" width="5" height="28"/>
+    <rect x="78" y="0" width="2" height="28"/>
+    <rect x="83" y="0" width="4" height="28"/>
+    <rect x="90" y="0" width="2" height="28"/>
+    <rect x="94" y="0" width="4" height="28"/>
+    <rect x="100" y="0" width="2" height="28"/>
+    <rect x="104" y="0" width="5" height="28"/>
+    <rect x="111" y="0" width="3" height="28"/>
+    <rect x="116" y="0" width="2" height="28"/>
+    <rect x="120" y="0" width="4" height="28"/>
+  </g>
+</svg>

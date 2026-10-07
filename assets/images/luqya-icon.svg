@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="لُقيا AI">
+  <title>لُقيا AI — بصمة إصبع رقمية مدمجة بشبكة عصبية متوهجة</title>
+  <defs>
+    <radialGradient id="fiBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#14315E"/>
+      <stop offset="60%" stop-color="#0B1C4D"/>
+      <stop offset="100%" stop-color="#050C1F"/>
+    </radialGradient>
+    <filter id="fiGlowSoft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="1.9" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fiGlowTight" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="0.6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <circle cx="50" cy="50" r="46" fill="url(#fiBg)" stroke="#00A8B5" stroke-opacity="0.3" stroke-width="1"/>
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#00A8B5" stroke-opacity="0.1" stroke-width="1"/>
+
+  <g fill="none" stroke="#2EE6FF" stroke-width="3" stroke-opacity="0.45" stroke-linecap="round" filter="url(#fiGlowSoft)">
+    <path d="M16 62 A36 36 0 0 1 84 62"/>
+    <path d="M21 65 A31 31 0 0 1 79 65"/>
+    <path d="M26 68 A26 26 0 0 1 74 68"/>
+    <path d="M31 71 A21 21 0 0 1 69 71"/>
+    <path d="M36 74 A16 16 0 0 1 64 74"/>
+    <path d="M50 58 V84"/>
+    <path d="M50 68 H34 V78 H30"/>
+    <path d="M50 74 H64 V84 H70"/>
+  </g>
+
+  <g fill="none" stroke="#00A8B5" stroke-opacity="0.92" stroke-linecap="round">
+    <path d="M16 62 A36 36 0 0 1 84 62" stroke-opacity="0.7" stroke-width="2.4"/>
+    <path d="M21 65 A31 31 0 0 1 79 65" stroke-opacity="0.8" stroke-width="2.4"/>
+    <path d="M26 68 A26 26 0 0 1 74 68" stroke-width="2.4"/>
+    <path d="M31 71 A21 21 0 0 1 69 71" stroke-width="2.4"/>
+    <path d="M36 74 A16 16 0 0 1 64 74" stroke-width="2.4"/>
+  </g>
+
+  <g fill="none" stroke="#2EE6FF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" filter="url(#fiGlowTight)">
+    <path d="M50 58 V84"/>
+    <path d="M50 68 H34 V78 H30"/>
+    <path d="M50 74 H64 V84 H70"/>
+  </g>
+  <g fill="none" stroke="#4FF0FF" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 68 H34 V78 H30"/>
+    <path d="M50 74 H64 V84 H70"/>
+  </g>
+
+  <path d="M20 44 H80" fill="none" stroke="#4FF0FF" stroke-width="1.1" stroke-dasharray="2.6 3.6" stroke-opacity="0.55" stroke-linecap="round"/>
+
+  <g fill="#4FF0FF" filter="url(#fiGlowTight)">
+    <circle cx="30" cy="78" r="2.4"/>
+    <circle cx="70" cy="84" r="2.4"/>
+    <circle cx="50" cy="84" r="1.8"/>
+    <circle cx="50" cy="58" r="1.8"/>
+    <circle cx="50" cy="44" r="1.6"/>
+    <circle cx="20" cy="44" r="1.6"/>
+    <circle cx="80" cy="44" r="1.6"/>
+  </g>
+</svg>

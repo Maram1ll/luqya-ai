@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-422.3 12.0 580.3 272.0" role="img" aria-label="لُقيا AI" shape-rendering="geometricPrecision">
+  <title>لُقيا AI</title>
+  <desc>شعار لُقيا AI بخلفية شفافة: كلمة لُقيا باللون الأبيض مع عدسة مكبّرة معدنية زرقاء ودارات كهربائية مضيئة و AI متوهجة في مركز العدسة مع توهج داخلي وظلال ناعمة</desc>
+  <style>
+    .luqya-float {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      animation: luqya-float 5s ease-in-out infinite;
+    }
+    .luqya-halo { animation: luqya-halo 5s ease-in-out infinite; }
+    .luqya-ai { animation: luqya-ai 5s ease-in-out infinite; }
+    .luqya-flare { animation: luqya-flare 5s ease-in-out infinite; }
+    .luqya-handletrace { animation: luqya-trace 3.6s ease-in-out infinite; }
+    .luqya-nodes circle { animation: luqya-twinkle 3s ease-in-out infinite; }
+    .luqya-nodes circle:nth-child(2n) { animation-delay: .35s; }
+    .luqya-nodes circle:nth-child(3n) { animation-delay: .7s; }
+    .luqya-nodes circle:nth-child(5n) { animation-delay: 1.05s; }
+    @keyframes luqya-float {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-5px); }
+    }
+    @keyframes luqya-halo {
+      0%, 100% { opacity: .5; }
+      50%      { opacity: 1; }
+    }
+    @keyframes luqya-ai {
+      0%, 100% { opacity: .8; }
+      50%      { opacity: 1; }
+    }
+    @keyframes luqya-flare {
+      0%, 100% { opacity: .55; }
+      50%      { opacity: 1; }
+    }
+    @keyframes luqya-trace {
+      0%, 100% { opacity: .6; }
+      50%      { opacity: 1; }
+    }
+    @keyframes luqya-twinkle {
+      0%, 100% { opacity: .3; }
+      50%      { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .luqya-float, .luqya-halo, .luqya-ai, .luqya-flare, .luqya-handletrace, .luqya-nodes circle {
+        animation: none;
+      }
+    }
+  </style>
+
+  <defs>
+    <filter id="magShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="11" flood-color="#03112e" flood-opacity="0.40"/>
+    </filter>
+    <radialGradient id="flareCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="45%" stop-color="#4ff0ff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#00a8b5" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aiGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.40"/>
+      <stop offset="55%" stop-color="#00a8b5" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#00a8b5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <g class="luqya-float">
+
+    <!-- outer breathing cyan halo -->
+    <g class="luqya-halo" fill="none" stroke="#2ee6ff">
+      <circle cx="0" cy="120.0" r="102" stroke-opacity="0.07" stroke-width="3"/>
+    </g>
+
+    <g filter="url(#magShadow)">
+    <!-- handle (45 deg down-right): metallic layers + dark PCB inlay groove -->
+    <path d="M 61.80 181.80 L 103.80 223.80" fill="none" stroke="#0a192f" stroke-width="36" stroke-linecap="round"/>
+    <path d="M 65.80 185.80 L 107.80 227.80" fill="none" stroke="#113059" stroke-width="28" stroke-linecap="round"/>
+    <path d="M 63.80 183.80 L 105.80 225.80" fill="none" stroke="#1d3d7d" stroke-width="19" stroke-linecap="round"/>
+    <path d="M 60.80 180.80 L 102.80 222.80" fill="none" stroke="#00a8b5" stroke-width="7" stroke-opacity="0.5" stroke-linecap="round"/>
+    <!-- recessed inlay -->
+    <path d="M 65.80 185.80 L 107.80 227.80" fill="none" stroke="#0a1626" stroke-width="13" stroke-linecap="round"/>
+    <!-- inlay PCB traces + cross jumper, mirroring the lens -->
+    <g class="luqya-handletrace" fill="none" stroke-linecap="round">
+      <path d="M 68.77 182.83 L 110.77 224.83" stroke="#2ee6ff" stroke-width="2.6" stroke-opacity="0.7"/>
+      <path d="M 68.77 182.83 L 110.77 224.83" stroke="#ffffff" stroke-width="1"/>
+      <path d="M 62.83 188.77 L 104.83 230.77" stroke="#2ee6ff" stroke-width="2.6" stroke-opacity="0.7"/>
+      <path d="M 62.83 188.77 L 104.83 230.77" stroke="#ffffff" stroke-width="1"/>
+      <path d="M 89.77 203.83 L 83.83 209.77" stroke="#4ff0ff" stroke-width="1.4" stroke-opacity="0.5"/>
+    </g>
+    <g>
+      <circle cx="68.8" cy="182.8" r="2" fill="#4ff0ff"/><circle cx="68.8" cy="182.8" r="0.9" fill="#ffffff"/>
+      <circle cx="62.8" cy="188.8" r="2" fill="#4ff0ff"/><circle cx="62.8" cy="188.8" r="0.9" fill="#ffffff"/>
+      <circle cx="110.8" cy="224.8" r="2" fill="#4ff0ff"/><circle cx="110.8" cy="224.8" r="0.9" fill="#ffffff"/>
+      <circle cx="104.8" cy="230.8" r="2" fill="#4ff0ff"/><circle cx="104.8" cy="230.8" r="0.9" fill="#ffffff"/>
+      <circle cx="89.8" cy="203.8" r="2" fill="#4ff0ff"/><circle cx="89.8" cy="203.8" r="0.9" fill="#ffffff"/>
+      <circle cx="83.8" cy="209.8" r="2" fill="#4ff0ff"/><circle cx="83.8" cy="209.8" r="0.9" fill="#ffffff"/>
+    </g>
+
+    <!-- lens interior: deep dark navy -->
+    <circle cx="0" cy="120.0" r="70" fill="#0a192f"/>
+    <circle cx="0" cy="120.0" r="46" fill="none" stroke="#00a8b5" stroke-opacity="0.09" stroke-width="1.4"/>
+    <circle cx="0" cy="120.0" r="30" fill="none" stroke="#00a8b5" stroke-opacity="0.09" stroke-width="1.2"/>
+
+    <!-- glowing circuit traces -->
+          <g fill="none" stroke="#00a8b5" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.3">
+        <path d="M 4 96.0 V 70.0"/>
+        <path d="M -24 90.0 H -38 V 70.0"/>
+        <path d="M -24 114.0 H -44 V 96.0"/>
+        <path d="M -24 146.0 H -40 V 164.0"/>
+        <path d="M 28 112.0 H 44 V 88.0"/>
+        <path d="M 28 142.0 H 42 V 162.0"/>
+        <path d="M 4 144.0 V 168.0"/>
+      </g>
+          <g fill="none" stroke="#2ee6ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 4 96.0 V 70.0"/>
+        <path d="M -24 90.0 H -38 V 70.0"/>
+        <path d="M -24 114.0 H -44 V 96.0"/>
+        <path d="M -24 146.0 H -40 V 164.0"/>
+        <path d="M 28 112.0 H 44 V 88.0"/>
+        <path d="M 28 142.0 H 42 V 162.0"/>
+        <path d="M 4 144.0 V 168.0"/>
+      </g>
+          <g fill="none" stroke="#4ff0ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 4 96.0 V 70.0"/>
+        <path d="M -24 90.0 H -38 V 70.0"/>
+        <path d="M -24 114.0 H -44 V 96.0"/>
+        <path d="M -24 146.0 H -40 V 164.0"/>
+        <path d="M 28 112.0 H 44 V 88.0"/>
+        <path d="M 28 142.0 H 42 V 162.0"/>
+        <path d="M 4 144.0 V 168.0"/>
+      </g>
+
+    <!-- solder pads -->
+    <g fill="#2ee6ff">
+      <circle cx="6.0" cy="70.0" r="5"/>
+      <circle cx="-38.0" cy="70.0" r="5"/>
+      <circle cx="-44.0" cy="96.0" r="5"/>
+      <circle cx="-40.0" cy="164.0" r="5"/>
+      <circle cx="44.0" cy="88.0" r="5"/>
+      <circle cx="42.0" cy="162.0" r="5"/>
+      <circle cx="6.0" cy="168.0" r="5"/>
+    </g>
+
+    <!-- microchips -->
+    <g fill="#0a192f" stroke="#2ee6ff" stroke-width="1.6">
+      <rect x="-44" y="76.0" width="16" height="16" rx="3"/>
+      <rect x="30" y="76.0" width="15" height="14" rx="3"/>
+      <rect x="-44" y="148.0" width="16" height="16" rx="3"/>
+      <rect x="34" y="145.0" width="13" height="13" rx="3"/>
+    </g>
+    <g fill="#4ff0ff">
+      <rect x="-40" y="80.0" width="4" height="4" rx="1"/>
+      <rect x="-34" y="80.0" width="4" height="4" rx="1"/>
+      <rect x="-40" y="86.0" width="4" height="4" rx="1"/>
+      <rect x="34" y="80.0" width="3.5" height="3.5" rx="1"/>
+      <rect x="39" y="80.0" width="3.5" height="3.5" rx="1"/>
+      <rect x="-40" y="152.0" width="4" height="4" rx="1"/>
+      <rect x="-34" y="152.0" width="4" height="4" rx="1"/>
+      <rect x="38" y="149.0" width="3.5" height="3.5" rx="1"/>
+    </g>
+
+    <!-- soft cyan glow disc behind the AI letters -->
+    <circle cx="0" cy="120.0" r="36" fill="url(#aiGlow)"/>
+
+    <!-- hollow glowing AI at lens centre -->
+    <g class="luqya-ai" fill="none">
+      <g stroke="#00a8b5" stroke-opacity="0.5" stroke-width="10">
+      <path d="M-10.94 100.38H-3.26L11.31 139.62H1.64Q0.22 134.79 -0.71 131.87H-13.61Q-15.41 137.20 -16.03 139.62H-25.51ZM-6.98 113.15Q-8.77 117.98 -10.82 124.00H-3.38Q-4.68 120.03 -6.98 113.15Z"/>
+      <path d="M25.51 100.38V139.62H16.15V100.38Z"/>
+      </g>
+      <g stroke="#2ee6ff" stroke-width="5">
+      <path d="M-10.94 100.38H-3.26L11.31 139.62H1.64Q0.22 134.79 -0.71 131.87H-13.61Q-15.41 137.20 -16.03 139.62H-25.51ZM-6.98 113.15Q-8.77 117.98 -10.82 124.00H-3.38Q-4.68 120.03 -6.98 113.15Z"/>
+      <path d="M25.51 100.38V139.62H16.15V100.38Z"/>
+      </g>
+      <g stroke="#4ff0ff" stroke-width="2.2">
+      <path d="M-10.94 100.38H-3.26L11.31 139.62H1.64Q0.22 134.79 -0.71 131.87H-13.61Q-15.41 137.20 -16.03 139.62H-25.51ZM-6.98 113.15Q-8.77 117.98 -10.82 124.00H-3.38Q-4.68 120.03 -6.98 113.15Z"/>
+      <path d="M25.51 100.38V139.62H16.15V100.38Z"/>
+      </g>
+      <g stroke="#ffffff" stroke-width="0.9" stroke-opacity="0.9">
+      <path d="M-10.94 100.38H-3.26L11.31 139.62H1.64Q0.22 134.79 -0.71 131.87H-13.61Q-15.41 137.20 -16.03 139.62H-25.51ZM-6.98 113.15Q-8.77 117.98 -10.82 124.00H-3.38Q-4.68 120.03 -6.98 113.15Z"/>
+      <path d="M25.51 100.38V139.62H16.15V100.38Z"/>
+      </g>
+    </g>
+
+    <!-- lens flare burst inside the A -->
+    <g class="luqya-flare" stroke="#ffffff" fill="none">
+      <path d="M -35.26 120.00 H 24.74" stroke-width="2.2" stroke-opacity="0.8" stroke-linecap="round"/>
+      <path d="M -5.26 98.00 V 142.00" stroke-width="1.6" stroke-opacity="0.5" stroke-linecap="round"/>
+      <path d="M -17.26 108.00 L 6.74 132.00" stroke-width="1.1" stroke-opacity="0.4"/>
+      <path d="M -17.26 132.00 L 6.74 108.00" stroke-width="1.1" stroke-opacity="0.4"/>
+      <g stroke="#4ff0ff" stroke-width="1.3" stroke-opacity="0.7">
+        <path d="M 8.74 120.00 L 19.74 120.00"/>
+        <path d="M 8.74 120.00 H 14.74"/>
+        <path d="M -5.26 110.00 L -5.26 102.00"/>
+      </g>
+      <circle cx="14.74" cy="120.00" r="1.7" fill="#4ff0ff" fill-opacity="0.85" stroke="none"/>
+      <circle cx="-5.26" cy="120.00" r="10.5" stroke="#4ff0ff" stroke-opacity="0.5" stroke-width="1.4"/>
+      <circle cx="-5.26" cy="120.00" r="6" fill="url(#flareCore)" stroke="none"/>
+      <circle cx="-5.26" cy="120.00" r="2.4" fill="#ffffff" stroke="none"/>
+    </g>
+
+    <!-- metallic multi-layer rim -->
+    <circle cx="0" cy="120.0" r="93" fill="none" stroke="#0a192f" stroke-width="6"/>
+    <circle cx="0" cy="120.0" r="89" fill="none" stroke="#113059" stroke-width="11"/>
+    <circle cx="0" cy="120.0" r="86" fill="none" stroke="#1d3d7d" stroke-width="7"/>
+    <circle cx="0" cy="120.0" r="83" fill="none" stroke="#00a8b5" stroke-width="10"/>
+    <circle cx="0" cy="120.0" r="83" fill="none" stroke="#2ee6ff" stroke-width="3" stroke-opacity="0.6"/>
+    <circle cx="0" cy="120.0" r="71" fill="none" stroke="#00a8b5" stroke-width="1.5" stroke-opacity="0.5"/>
+
+    <!-- glossy bevel highlight on the upper-left rim -->
+    <path d="M -48 52.0 A 83 83 0 0 1 -68 72.0" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.35" stroke-linecap="round"/>
+
+    <!-- glass glare streaks across upper-left of the lens -->
+    <g class="luqya-flare" fill="none" stroke-linecap="round">
+      <path d="M -32 86.0 Q -8 72.0 16 80.0" stroke="#ffffff" stroke-width="9" stroke-opacity="0.12"/>
+      <path d="M -24 92.0 Q -8 82.0 8 86.0" stroke="#ffffff" stroke-width="3" stroke-opacity="0.3"/>
+      <path d="M -32 86.0 Q -8 72.0 16 80.0" stroke="#4ff0ff" stroke-width="9" stroke-opacity="0.05"/>
+    </g>
+
+    <!-- LED nodes around the rim -->
+    <g class="luqya-nodes">
+      <g fill="#2ee6ff" fill-opacity="0.28">
+        <circle cx="81.19" cy="137.26" r="4.6"/>
+        <circle cx="53.35" cy="183.58" r="4.6"/>
+        <circle cx="2.90" cy="202.95" r="4.6"/>
+        <circle cx="-48.79" cy="187.15" r="4.6"/>
+        <circle cx="-79.78" cy="142.88" r="4.6"/>
+        <circle cx="-76.96" cy="88.91" r="4.6"/>
+        <circle cx="-41.50" cy="48.12" r="4.6"/>
+        <circle cx="11.55" cy="37.81" r="4.6"/>
+        <circle cx="59.71" cy="62.34" r="4.6"/>
+        <circle cx="82.55" cy="111.32" r="4.6"/>
+      </g>
+      <g fill="#4ff0ff">
+        <circle cx="81.19" cy="137.26" r="2.5"/>
+        <circle cx="53.35" cy="183.58" r="2.5"/>
+        <circle cx="2.90" cy="202.95" r="2.5"/>
+        <circle cx="-48.79" cy="187.15" r="2.5"/>
+        <circle cx="-79.78" cy="142.88" r="2.5"/>
+        <circle cx="-76.96" cy="88.91" r="2.5"/>
+        <circle cx="-41.50" cy="48.12" r="2.5"/>
+        <circle cx="11.55" cy="37.81" r="2.5"/>
+        <circle cx="59.71" cy="62.34" r="2.5"/>
+        <circle cx="82.55" cy="111.32" r="2.5"/>
+      </g>
+    </g>
+
+    <!-- collar joining handle to rim -->
+    <circle cx="65.8" cy="185.8" r="19" fill="#113059" stroke="#00a8b5" stroke-width="2.5"/>
+    <circle cx="64.8" cy="184.8" r="12" fill="#1d3d7d" stroke="#2ee6ff" stroke-opacity="0.8" stroke-width="1.5"/>
+    </g>
+
+  </g>
+
+  <g fill="#ffffff">
+      <path d="M-367.20 177.38Q-381.30 177.38 -389.25 168.38Q-396.30 160.43 -396.30 147.97V93.67L-371.55 80.62V146.78Q-371.55 150.68 -370.20 152.03Q-368.85 153.38 -364.95 153.38H-351.00V177.38Z"/>
+      <path d="M-302.10 153.38H-288.15V177.38H-304.35Q-313.95 177.38 -321.00 172.88Q-328.35 177.38 -337.80 177.38H-354.00V153.38H-340.05Q-336.15 153.38 -334.80 152.03Q-333.45 150.68 -333.45 146.78V122.18L-308.70 109.12V146.78Q-308.70 150.68 -307.35 152.03Q-306.00 153.38 -302.10 153.38ZM-344.25 189.53Q-338.70 189.53 -335.32 192.90Q-331.95 196.28 -331.95 201.82Q-331.95 207.53 -335.32 210.98Q-338.70 214.43 -344.25 214.43Q-349.80 214.43 -353.25 210.90Q-356.70 207.38 -356.70 201.82Q-356.70 196.28 -353.25 192.90Q-349.80 189.53 -344.25 189.53ZM-317.25 189.53Q-311.70 189.53 -308.32 192.90Q-304.95 196.28 -304.95 201.82Q-304.95 207.53 -308.32 210.98Q-311.70 214.43 -317.25 214.43Q-322.80 214.43 -326.25 210.90Q-329.70 207.38 -329.70 201.82Q-329.70 196.28 -326.25 192.90Q-322.80 189.53 -317.25 189.53Z"/>
+      <path d="M-259.05 100.12Q-264.60 100.12 -268.05 96.60Q-271.50 93.08 -271.50 87.53Q-271.50 81.98 -268.05 78.60Q-264.60 75.23 -259.05 75.23Q-253.50 75.23 -250.12 78.60Q-246.75 81.98 -246.75 87.53Q-246.75 93.23 -250.12 96.68Q-253.50 100.12 -259.05 100.12ZM-232.05 100.12Q-237.60 100.12 -241.05 96.60Q-244.50 93.08 -244.50 87.53Q-244.50 81.98 -241.05 78.60Q-237.60 75.23 -232.05 75.23Q-226.50 75.23 -223.12 78.60Q-219.75 81.98 -219.75 87.53Q-219.75 93.23 -223.12 96.68Q-226.50 100.12 -232.05 100.12ZM-217.65 153.38H-199.95V177.38H-231.75Q-240.00 177.38 -245.55 176.18Q-251.10 177.38 -259.35 177.38H-291.15V153.38H-273.45Q-276.60 146.32 -276.60 139.57Q-276.60 124.28 -267.45 114.83Q-258.90 106.12 -245.55 106.12Q-230.25 106.12 -221.55 117.22Q-214.50 126.38 -214.50 139.57Q-214.50 146.32 -217.65 153.38ZM-245.55 150.97Q-238.50 146.32 -238.50 137.93Q-238.50 129.38 -245.55 129.38Q-252.60 129.38 -252.60 137.78Q-252.60 146.47 -245.55 150.97Z"/>
+      <path d="M-206.85 72.07 -199.20 55.72 -181.80 52.57Q-183.45 48.37 -183.45 44.32Q-183.45 36.52 -178.57 31.05Q-173.70 25.57 -166.80 25.57Q-159.60 25.57 -154.80 30.90Q-150.00 36.22 -150.00 44.32Q-150.00 52.12 -154.65 57.90Q-159.30 63.67 -166.35 64.72ZM-166.35 47.17Q-163.80 45.37 -163.80 42.82Q-163.80 39.38 -166.50 39.38Q-169.20 39.38 -169.20 42.82Q-169.20 45.52 -166.35 47.17Z"/>
+      <path d="M-202.95 177.38V153.38H-195.00Q-189.30 153.38 -187.27 151.20Q-185.25 149.03 -185.25 143.03V93.83L-160.50 80.62V143.18Q-160.50 159.07 -170.25 168.53Q-179.25 177.38 -193.95 177.38Z"/>
+  </g>
+</svg>

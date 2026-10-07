@@ -1,0 +1,103 @@
+# ============================================================
+# لُقيا AI — Apache hardening for public deployment
+# Requires Apache 2.4 (mod_authz_core). Applies to this directory
+# and every subdirectory, because mod_access_compat/htaccess
+# inheritance is enabled on this project.
+# ============================================================
+
+# ────────────────────────────────────────────────────────────
+# 0) Never serve the source of the secrets file.
+#    config/config.local.php holds the real DB password and the
+#    Gemini API key. Denied even if it is ever uploaded by mistake.
+# ────────────────────────────────────────────────────────────
+<FilesMatch "^(config\.local\.php|config\.local\..*\.php|.*\.local\.php|secrets\.php|credentials\.php)$">
+    Require all denied
+</FilesMatch>
+
+# ────────────────────────────────────────────────────────────
+# 1) Block .env and every variant (.env.local, .env.production, ...)
+# ────────────────────────────────────────────────────────────
+<FilesMatch "^\.env(\..*)?$">
+    Require all denied
+</FilesMatch>
+
+# ────────────────────────────────────────────────────────────
+# 2) Block backups, dumps, logs and config files that must never
+#    be downloaded or executed. config/*.php is deliberately NOT
+#    in this list: the app needs to include them server-side, and
+#    a plain PHP include executes rather than exposes. The files
+#    with real secrets are denied individually in section 0.
+# ────────────────────────────────────────────────────────────
+<FilesMatch "\.(env|ini|bak|old|orig|save|swp|log|sql|sqlite|db|sh|yml|yaml)$">
+    Require all denied
+</FilesMatch>
+
+# ────────────────────────────────────────────────────────────
+# 2b) Archives. A .zip of the project is a full copy of every
+#     secret file, so an exposed download of one is equivalent
+#     to leaking config.local.php. Archives have no business being
+#     web-readable at all. (This was a live exposure: api.zip
+#     returned HTTP 200 with config.local.php inside it.)
+# ────────────────────────────────────────────────────────────
+<FilesMatch "\.(zip|tar|gz|tgz|bz2|rar|7z|jar|war|cab|iso|dmg)$">
+    Require all denied
+</FilesMatch>
+
+# Directory listings must never enumerate the folder contents.
+Options -Indexes
+
+# Never execute a script from a backup/dump that slipped in.
+<FilesMatch "\.(bak|old|orig|save|swp|sql)$">
+    Require all denied
+    RemoveHandler .php
+    php_flag engine off
+</FilesMatch>
+
+# ────────────────────────────────────────────────────────────
+# 3) Developer-only tooling: never reachable on a public host.
+#    setup_db.php can (re)create and re-seed the whole database.
+#    audit_api_surface.php prints internal source analysis.
+#    Both are for local CLI use only. Deny even in subdirectories.
+# ────────────────────────────────────────────────────────────
+<FilesMatch "^(setup_db\.php|audit_api_surface\.php|luqya_database_schema\.txt)$">
+    Require all denied
+</FilesMatch>
+
+# ────────────────────────────────────────────────────────────
+# 4) VCS metadata, directory listing
+# ────────────────────────────────────────────────────────────
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)\.git - [F,L,NC]
+    RewriteRule (^|/)\.(?!well-known) - [F,L,NC]
+</IfModule>
+
+Options -Indexes
+
+# Do not advertise the exact PHP version.
+<IfModule mod_php.c>
+    php_flag expose_php off
+</IfModule>
+ServerSignature Off
+
+# ────────────────────────────────────────────────────────────
+# 5) Security headers
+# ────────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), interest-cohort=()"
+    # Uncomment once HTTPS is confirmed working (free hosting usually provides it):
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# ────────────────────────────────────────────────────────────
+# 6) Upload hardening lives in uploads/.htaccess
+#    (a <Directory> block is NOT valid inside .htaccess, so it must
+#    not appear here or Apache returns 500 on every request)
+# ────────────────────────────────────────────────────────────
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^uploads/.*\.(php|phtml|php[0-9]|pl|py|cgi|asp|aspx|sh|htaccess)$ - [F,L,NC]
+</IfModule>

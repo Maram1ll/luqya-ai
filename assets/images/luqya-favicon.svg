@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="لُقيا AI">
+  <title>لُقيا AI</title>
+  <defs>
+    <linearGradient id="fvTile" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1C4D"/>
+      <stop offset="55%" stop-color="#113059"/>
+      <stop offset="100%" stop-color="#0056A3"/>
+    </linearGradient>
+    <radialGradient id="fvGlow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0.28"/>
+      <stop offset="55%" stop-color="#0a4a7a" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#001423" stop-opacity="0.04"/>
+    </radialGradient>
+    <linearGradient id="fvFrame" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0077d0"/>
+      <stop offset="45%" stop-color="#0056A3"/>
+      <stop offset="100%" stop-color="#003366"/>
+    </linearGradient>
+    <linearGradient id="fvHandle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0056A3"/>
+      <stop offset="100%" stop-color="#002a4d"/>
+    </linearGradient>
+    <filter id="fvGlowF" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fvAiGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="4.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="fvLensClip"><circle cx="100" cy="100" r="62"/></clipPath>
+    <style>
+      #lq-root .circuit { stroke: #7DD3FC; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      #lq-root .node { fill: #7DD3FC; }
+      #lq-root .ai-text { font-family: "Inter", "Segoe UI", Arial, sans-serif; font-weight: 900; fill: #FFFFFF; }
+    </style>
+  </defs>
+
+  <rect x="1.5" y="1.5" width="97" height="97" rx="24" fill="url(#fvTile)"/>
+  <rect x="1.5" y="1.5" width="97" height="97" rx="24" fill="none" stroke="#7DD3FC" stroke-opacity="0.35" stroke-width="1"/>
+
+  <g transform="translate(50 50) scale(0.5) translate(-277 -114)">
+    <g id="lq-root">
+      <g id="magnifier" transform="translate(185 15) scale(0.85)">
+        <g filter="url(#fvGlowF)">
+          <rect x="150" y="150" width="62" height="18" rx="9" fill="url(#fvHandle)" transform="rotate(45 150 150)"/>
+          <rect x="150" y="150" width="62" height="6" rx="3" fill="#7DD3FC" opacity="0.5" transform="rotate(45 150 150)"/>
+        </g>
+
+        <circle cx="100" cy="100" r="68" fill="none" stroke="url(#fvFrame)" stroke-width="10"/>
+        <circle cx="100" cy="100" r="68" fill="none" stroke="#7DD3FC" stroke-width="1.2" opacity="0.5"/>
+        <circle cx="100" cy="100" r="74" fill="none" stroke="#0056A3" stroke-width="2" opacity="0.5"/>
+
+        <circle cx="100" cy="100" r="62" fill="#001a2e"/>
+        <circle cx="100" cy="100" r="62" fill="url(#fvGlow)"/>
+
+        <g clip-path="url(#fvLensClip)" filter="url(#fvGlowF)">
+          <g>
+            <path class="circuit" d="M100 38 L100 58 L80 78 L80 100"/>
+            <path class="circuit" d="M100 38 L100 58 L120 78 L120 100"/>
+            <path class="circuit" d="M38 100 L58 100 L78 80 L100 80"/>
+            <path class="circuit" d="M162 100 L142 100 L122 80 L100 80"/>
+            <path class="circuit" d="M100 162 L100 142 L80 122 L80 100"/>
+            <path class="circuit" d="M100 162 L100 142 L120 122 L120 100"/>
+            <path class="circuit" d="M48 52 L72 72 L72 90"/>
+            <path class="circuit" d="M152 52 L128 72 L128 90"/>
+            <path class="circuit" d="M48 148 L72 128 L72 110"/>
+            <path class="circuit" d="M152 148 L128 128 L128 110"/>
+            <path class="circuit" d="M70 100 L90 100"/>
+            <path class="circuit" d="M110 100 L130 100"/>
+          </g>
+          <g>
+            <path class="circuit" d="M60 60 L84 84"/>
+            <path class="circuit" d="M140 60 L116 84"/>
+            <path class="circuit" d="M60 140 L84 116"/>
+            <path class="circuit" d="M140 140 L116 116"/>
+          </g>
+          <g class="node">
+            <circle cx="100" cy="38" r="2.4"/>
+            <circle cx="100" cy="162" r="2.4"/>
+            <circle cx="38" cy="100" r="2.4"/>
+            <circle cx="162" cy="100" r="2.4"/>
+            <circle cx="80" cy="78" r="1.8"/>
+            <circle cx="120" cy="78" r="1.8"/>
+            <circle cx="80" cy="122" r="1.8"/>
+            <circle cx="120" cy="122" r="1.8"/>
+            <circle cx="72" cy="72" r="1.6"/>
+            <circle cx="128" cy="72" r="1.6"/>
+            <circle cx="72" cy="128" r="1.6"/>
+            <circle cx="128" cy="128" r="1.6"/>
+          </g>
+        </g>
+
+        <ellipse cx="100" cy="100" rx="48" ry="31" fill="#001a2e" opacity="0.5"/>
+        <g filter="url(#fvAiGlow)">
+          <text x="100" y="123" text-anchor="middle" class="ai-text" font-size="64">AI</text>
+        </g>
+
+        <circle cx="100" cy="100" r="62" fill="none" stroke="#7DD3FC" stroke-width="0.8" opacity="0.3"/>
+      </g>
+    </g>
+  </g>
+</svg>

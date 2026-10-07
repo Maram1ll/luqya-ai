@@ -1,0 +1,52 @@
+# ─── Secrets & environment ───────────────────────────────────
+# Local development only. These must NEVER reach a public host.
+.env
+.env.*
+!.env.example
+
+# Deployment secrets file (contains real DB password + Gemini key).
+# config/config.example.php IS the tracked template and must stay committable.
+config/config.local.php
+config/config.local.*.php
+config/*.local.php
+
+# Belt-and-braces: any leftover secret-shaped file anywhere in the tree.
+*.local.php.bak
+secrets.php
+credentials.php
+
+# ─── Logs ────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Runtime / generated ──────────────────────────────────────
+# Rate-limit state and other machine-local scratch data.
+storage/
+# User-uploaded item photos (runtime/personal data). Never committed to a
+# public host; local uploads/ must also stay just that — local.
+uploads/
+# Generated deployment dump + archives must never be committed (they contain
+# real rows, including bcrypt hashes and personal data). database.sql is built
+# by the deployment step and is intentionally NOT tracked.
+database.sql
+database.sql.gz
+/database.zip
+*.sql.gz
+*.zip
+# ...but the canonical schema IS source code and stays tracked.
+!database/schema.sql
+!database/*.sql
+
+# ─── OS cruft ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── Editors / IDEs ──────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*~
+
+# ─── Local scratch ───────────────────────────────────────────
+scratch/

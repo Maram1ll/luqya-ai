@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="100%" height="100%">
+  <defs>
+    <linearGradient id="laptopLid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E2E8F0"/>
+      <stop offset="50%" stop-color="#CBD5E1"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
+    </linearGradient>
+    <linearGradient id="screenWall" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B365D"/>
+      <stop offset="40%" stop-color="#00A8B5"/>
+      <stop offset="100%" stop-color="#4CD9A1"/>
+    </linearGradient>
+    <linearGradient id="laptopBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="60%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
+    </linearGradient>
+    <filter id="laptopShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="400" height="250" rx="16" fill="#0F172A"/>
+
+  <!-- Laptop Display Screen (Upper Part) -->
+  <rect x="75" y="25" width="250" height="150" rx="8" fill="#0F172A" stroke="#94A3B8" stroke-width="2" filter="url(#laptopShadow)"/>
+  
+  <!-- Screen Bezel Camera -->
+  <circle cx="200" cy="31" r="2" fill="#475569"/>
+  <circle cx="200" cy="31" r="0.8" fill="#4CD9A1"/>
+
+  <!-- Active Display Screen Glass -->
+  <rect x="85" y="38" width="230" height="128" rx="4" fill="url(#screenWall)"/>
+  
+  <!-- Screen Wallpaper UI Elements -->
+  <circle cx="200" cy="95" r="28" fill="rgba(255,255,255,0.15)" stroke="#FFFFFF" stroke-width="1.5"/>
+  <text x="200" y="99" font-family="Cairo, Tajawal, Tahoma, 'Segoe UI', sans-serif" font-weight="800" font-size="12" fill="#FFFFFF" text-anchor="middle" direction="rtl">لُقيا AI</text>
+  <text x="200" y="112" font-family="system-ui, sans-serif" font-size="8" fill="#E2E8F0" text-anchor="middle">Ultrabook Pro 13"</text>
+
+  <!-- Screen Taskbar -->
+  <rect x="85" y="152" width="230" height="14" fill="rgba(15,23,42,0.6)"/>
+  <circle cx="95" cy="159" r="3" fill="#00A8B5"/>
+  <circle cx="105" cy="159" r="3" fill="#4CD9A1"/>
+  <circle cx="115" cy="159" r="3" fill="#F59E0B"/>
+
+  <!-- Center Hinge Connector -->
+  <rect x="145" y="173" width="110" height="8" rx="3" fill="#64748B"/>
+
+  <!-- Laptop Bottom Keyboard Deck (Perspective Base) -->
+  <polygon points="40,225 360,225 330,178 70,178" fill="url(#laptopBase)" stroke="#94A3B8" stroke-width="1"/>
+  
+  <!-- Keyboard Island -->
+  <polygon points="85,208 315,208 298,183 102,183" fill="#1E293B" stroke="#475569" stroke-width="0.8"/>
+  
+  <!-- Key Grids Simulation -->
+  <g fill="#334155" opacity="0.9">
+    <!-- Row 1 -->
+    <rect x="108" y="185" width="184" height="4" rx="1"/>
+    <!-- Row 2 -->
+    <rect x="100" y="191" width="200" height="4" rx="1"/>
+    <!-- Row 3 -->
+    <rect x="94" y="197" width="212" height="4" rx="1"/>
+    <!-- Spacebar Row -->
+    <rect x="150" y="203" width="100" height="4" rx="1" fill="#475569"/>
+  </g>
+
+  <!-- Trackpad -->
+  <rect x="175" y="211" width="50" height="12" rx="2" fill="#CBD5E1" stroke="#94A3B8" stroke-width="0.8"/>
+
+  <!-- Front Lip Groove Notch -->
+  <rect x="185" y="224" width="30" height="2" rx="1" fill="#64748B"/>
+</svg>
