@@ -86,9 +86,42 @@ foreach (luqyaLocalConfig() as $luqyaKey => $luqyaVal) {
 // 2. Database credentials come exclusively from the environment (no hardcoded secrets).
 //    DB_HOST / DB_PORT are non-sensitive and keep safe defaults; DB_USER, DB_PASS and
 //    DB_NAME must be provided via .env, config/config.local.php or the process environment.
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_PORT', getenv('DB_PORT') ?: '3306');
 
+// 2b. Railway (and similar PaaS) database variables. Railway's MySQL service
+//     exposes either a single connection URL (MYSQL_URL, or DATABASE_URL) or
+//     individual MYSQLHOST / MYSQLPORT / MYSQLUSER / MYSQLPASSWORD /
+//     MYSQLDATABASE variables. These are used ONLY where the DB_* sources
+//     above are absent, so any explicitly configured connection keeps winning.
+$rvHost = false;
+$rvPort = false;
+$rvUser = false;
+$rvPass = false;
+$rvName = false;
+
+$rvUrl = getenv('MYSQL_URL');
+if ($rvUrl === false) {
+    $rvUrl = getenv('DATABASE_URL');
+}
+if ($rvUrl !== false && $rvUrl !== '') {
+    $parsedRv = parse_url($rvUrl);
+    if (is_array($parsedRv) && isset($parsedRv['host'])) {
+        $rvHost = $parsedRv['host'];
+        $rvPort = isset($parsedRv['port']) ? (string) $parsedRv['port'] : '3306';
+        $rvUser = $parsedRv['user'] ?? '';
+        $rvPass = isset($parsedRv['pass']) ? urldecode($parsedRv['pass']) : '';
+        $rvName = isset($parsedRv['path']) ? ltrim($parsedRv['path'], '/') : '';
+    }
+}
+
+// Individual Railway variables override the parsed URL (in case both exist).
+$rvHost = getenv('MYSQLHOST') !== false && getenv('MYSQLHOST') !== '' ? getenv('MYSQLHOST') : $rvHost;
+$rvPort = getenv('MYSQLPORT') !== false && getenv('MYSQLPORT') !== '' ? getenv('MYSQLPORT') : $rvPort;
+$rvUser = getenv('MYSQLUSER') !== false && getenv('MYSQLUSER') !== '' ? getenv('MYSQLUSER') : $rvUser;
+$rvPass = getenv('MYSQLPASSWORD') !== false && getenv('MYSQLPASSWORD') !== '' ? getenv('MYSQLPASSWORD') : $rvPass;
+$rvName = getenv('MYSQLDATABASE') !== false && getenv('MYSQLDATABASE') !== '' ? getenv('MYSQLDATABASE') : $rvName;
+
+$dbHost = getenv('DB_HOST');
+$dbPort = getenv('DB_PORT');
 $dbUser = getenv('DB_USER');
 $dbPass = getenv('DB_PASS');
 if ($dbPass === false) {
@@ -96,6 +129,15 @@ if ($dbPass === false) {
 }
 $dbName = getenv('DB_NAME');
 
+// Apply the Railway fallback only where the DB_* source returned nothing.
+if (($dbHost === false || $dbHost === '') && $rvHost !== false && $rvHost !== '') { $dbHost = $rvHost; }
+if (($dbPort === false || $dbPort === '') && $rvPort !== false && $rvPort !== '') { $dbPort = $rvPort; }
+if (($dbUser === false || $dbUser === '') && $rvUser !== false && $rvUser !== '') { $dbUser = $rvUser; }
+if (($dbPass === false || $dbPass === '') && $rvPass !== false && $rvPass !== '') { $dbPass = $rvPass; }
+if (($dbName === false || $dbName === '') && $rvName !== false && $rvName !== '') { $dbName = $rvName; }
+
+define('DB_HOST', $dbHost !== false && $dbHost !== '' ? $dbHost : 'localhost');
+define('DB_PORT', $dbPort !== false && $dbPort !== '' ? $dbPort : '3306');
 define('DB_USER', $dbUser !== false ? $dbUser : '');
 define('DB_PASS', $dbPass !== false ? $dbPass : '');
 define('DB_NAME', $dbName !== false ? $dbName : '');
