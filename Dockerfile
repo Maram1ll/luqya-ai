@@ -11,8 +11,6 @@ RUN docker-php-ext-install pdo pdo_mysql mysqli
 RUN a2enmod rewrite
 
 # ── Explicit DocumentRoot + directory policy for the app ──
-# The project has no /public folder: index.php and routes live at the root,
-# so Apache must serve /var/www/html, honor .htaccess, and deny listings.
 RUN printf 'ServerName localhost\n<Directory /var/www/html>\n    Options -Indexes\n    AllowOverride All\n    Require all granted\n</Directory>\n' > /etc/apache2/conf-available/luqya-app.conf \
     && a2enconf luqya-app \
     && sed -ri 's#^(\s*)DocumentRoot .*#\1DocumentRoot /var/www/html#' /etc/apache2/sites-enabled/000-default.conf
@@ -29,7 +27,27 @@ RUN mkdir -p /var/www/html/uploads \
 ENV PORT=80
 EXPOSE 80
 
-# ── Bind Apache to EXACTLY Railway's $PORT ──
-# Overwrite every current "Listen" line in ports.conf with $PORT, retarget the
-# virtual host accordingly, then start Apache in the foreground.
-CMD ["sh", "-c", "P=${PORT:-80}; echo \"Luqya: binding Apache to port $P\"; sed -i \"s/^Listen .*/Listen $P/\" /etc/apache2/ports.conf; sed -i \"s/:80>/:$P>/g\" /etc/apache2/sites-available/000-default.conf; exec apache2-foreground"]
+# ── Startup entrypoint: destroy any re-introduced non-prefork MPM files ──
+# Runs right before Apache starts. Removes mpm_event/mpm_worker from BOTH
+# mods-enabled/ and mods-available/, re-asserts prefork, then binds $PORT and
+# launches Apache. Guarantees only mpm_prefork.{load,conf} can be present.
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'set -e' \
+    '' \
+    'cd /etc/apache2' \
+    'rm -f mods-enabled/mpm_event.load mods-enabled/mpm_event.conf' \
+    'rm -f mods-enabled/mpm_worker.load mods-enabled/mpm_worker.conf' \
+    'rm -f mods-available/mpm_event.load mods-available/mpm_event.conf' \
+    'rm -f mods-available/mpm_worker.load mods-available/mpm_worker.conf' \
+    'a2enmod mpm_prefork >/dev/null 2>&1 || true' \
+    'echo "Luqya MPMs active: $(ls mods-enabled | grep "^mpm_" | tr "\n" " ")"' \
+    'P="${PORT:-80}"' \
+    'echo "Luqya: binding Apache to port $P"' \
+    'sed -i "s/^Listen .*/Listen $P/" ports.conf' \
+    'sed -i "s/:80>/:$P>/g" sites-available/000-default.conf' \
+    'exec apache2-foreground' \
+    > /usr/local/bin/luqya-entrypoint.sh \
+    && chmod +x /usr/local/bin/luqya-entrypoint.sh
+
+CMD ["/usr/local/bin/luqya-entrypoint.sh"]
