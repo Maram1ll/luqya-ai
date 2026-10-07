@@ -1,5 +1,22 @@
 // لُقيا AI - التفاعل الرئيسي للواجهة ومساعد الذكاء الاصطناعي التفاعلي
 
+// ---- بديل الصور غير المتاحة (صور البلاغات المكسورة) ----
+// أي <img> لبلاغ لا يتمكن المتصفح من تحميله — مسار uploads/ محلي غير منشور في
+// بيئات النشر، أو ملف محذوف/منقّل — يُستبدل تلقائياً بمنفذ لُقيا الرمزي حتى لا
+// تظهر أيقونات صور مكسورة في أي صفحة (الرئيسية، الملف، لوحة الأمن).
+// يعمل على كل الصور الحالية والمضافة لاحقاً لأنه يلتقط حدث error في مرحلة
+// الالتقاط (capture) على مستوى المستند، ولا يعيد الاستبدال إلا مرة واحدة.
+const IMAGE_FALLBACK_SRC = 'assets/images/image-placeholder.svg';
+document.addEventListener('error', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLImageElement)) return;
+  const src = (target.getAttribute('src') || '').toLowerCase();
+  if (!src || src.includes('image-placeholder.svg')) return;
+  if (target.dataset.luqyaImageFallback) return;
+  target.dataset.luqyaImageFallback = '1';
+  target.src = IMAGE_FALLBACK_SRC;
+}, true);
+
 document.addEventListener('DOMContentLoaded', () => {
 
   // ---- زر وقائمة الإشعارات ----

@@ -60,9 +60,13 @@ return [
     // (10 attempts / 5 min / IP) and password_verify() all still apply.
     // There is no authentication bypass anywhere in this feature.
     //
-    // The demo passwords are NOT hardcoded in any PHP or JS file. They are read
-    // from this array only, so you control them here and can delete them
-    // without touching code. Leave empty to hide the panel entirely.
+    // Demo accounts are resolved in this order (first source wins):
+    //   1. this array (config.local.php),
+    //   2. the LUQYA_DEMO_ACCOUNTS environment variable (JSON), and
+    //   3. built-in public demo defaults that match the seeded database
+    //      (SEC-USR-1/security123 and S202403400/password123), so the panel
+    //      works out-of-the-box on hosting platforms like Railway.
+    // Leave empty here to rely on the env/built-ins, or override freely.
     'LUQYA_DEMO_LOGIN' => '0',
     'LUQYA_DEMO_ACCOUNTS' => [
         // [
