@@ -1,14 +1,22 @@
 FROM php:8.2-apache
-RUN a2dismod mpm_event mpm_worker || true
-RUN a2enmod mpm_prefork
+
+# ── Strictly one MPM: prefork (required by libapache2-mod-php) ──
+# Disable every MPM, then physically delete the event/worker load files so a
+# second MPM can never be enabled or loaded (AH00534 is then impossible).
+RUN a2dismod mpm_event mpm_worker mpm_prefork || true \
+    && rm -f /etc/apache2/mods-available/mpm_event.load \
+           /etc/apache2/mods-available/mpm_worker.load \
+    && a2enmod mpm_prefork
+
 RUN docker-php-ext-install pdo pdo_mysql mysqli
-RUN a2enmod rewrite headers
 
-# Build-time guard: Apache refuses to start when more than one MPM is loaded
-# (AH00534). Failing here means the image can never reach Railway broken.
-RUN apachectl configtest && apachectl -M
+# Only the modules the app actually needs
+RUN a2enmod rewrite
 
-# Copy the project into Apache's document root
+# Fail the build if Apache's configuration is ever invalid (duplicate MPM, syntax)
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf \
+    && apachectl configtest
+
 WORKDIR /var/www/html
 COPY . /var/www/html/
 
