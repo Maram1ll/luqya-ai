@@ -42,6 +42,16 @@ RUN printf '%s\n' \
     'rm -f mods-available/mpm_worker.load mods-available/mpm_worker.conf' \
     'a2enmod mpm_prefork >/dev/null 2>&1 || true' \
     'echo "Luqya MPMs active: $(ls mods-enabled | grep "^mpm_" | tr "\n" " ")"' \
+    'echo "Luqya: running database migration before Apache starts"' \
+    'if command -v php >/dev/null 2>&1 && [ -f /var/www/html/database/migrate.php ]; then' \
+    '  i=0; ok=0' \
+    '  while [ "$i" -lt 10 ]; do' \
+    '    if php /var/www/html/database/migrate.php --quiet; then ok=1; break; fi' \
+    '    echo "Luqya: migration attempt $((i+1)) failed; retrying in 3s"' \
+    '    i=$((i+1)); sleep 3' \
+    '  done' \
+    '  if [ "$ok" -eq 1 ]; then echo "Luqya: database migration OK"; else echo "Luqya: WARNING migration incomplete; starting Apache anyway"; fi' \
+    'fi' \
     'P="${PORT:-80}"' \
     'echo "Luqya: binding Apache to port $P"' \
     'sed -i "s/^Listen .*/Listen $P/" ports.conf' \
