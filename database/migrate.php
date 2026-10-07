@@ -7,8 +7,12 @@
 //
 // Safe to run repeatedly:
 //   * DDL uses CREATE TABLE IF NOT EXISTS (no-ops when tables already exist).
-//   * Seed (demo) rows are inserted ONLY into a pristine database, so they are
-//     never duplicated on re-runs and real data is never overwritten.
+//   * Seed (demo) rows are inserted into each EMPTY table only, so they are
+//     never duplicated on re-runs, real data is never overwritten, and a
+//     database whose tables exist but hold no rows (e.g. one table auto-created
+//     earlier by the app before the migration existed) still gets fully seeded
+//     on the next boot. TRUNCATE / DELETE reset statements in the dump are
+//     NEVER run at boot — they would wipe user data on every deploy.
 //   * CREATE DATABASE / USE statements are skipped: the PDO DSN already
 //     targets DB_NAME (the Railway database), so tables are created inside the
 //     configured schema rather than a hardcoded `luqya_ai`.
@@ -145,49 +149,79 @@ try {
     exit(1);
 }
 
-// Detect whether the database is pristine (no tracked table exists yet).
-$tables = ['users', 'reports', 'matches', 'notifications', 'activity_logs', 'password_resets'];
-$fresh  = true;
-try {
-    foreach ($tables as $t) {
-        $found = (int) $pdo->query(
-            'SELECT COUNT(*) FROM information_schema.tables '
-            . 'WHERE table_schema = ' . $pdo->quote(DB_NAME)
-            . ' AND table_name = ' . $pdo->quote($t)
-        )->fetchColumn();
-        if ($found > 0) { $fresh = false; break; }
+/**
+ * Returns the number of rows a table currently holds.
+ * @return int row count, or -1 when the table does not exist / cannot be read.
+ */
+function migrateTableRowCount(PDO $pdo, string $table): int {
+    try {
+        $safe = preg_replace('/[^A-Za-z0-9_]/', '', $table);
+        $stmt = $pdo->query('SELECT COUNT(*) FROM `' . $safe . '`');
+        return $stmt ? (int) $stmt->fetchColumn() : -1;
+    } catch (Throwable $e) {
+        return -1;
     }
-} catch (Throwable $e) {
-    $fresh = true;
+}
+
+/**
+ * Extracts the target table name of an INSERT statement.
+ */
+function migrateSeedTable(string $stmt): string {
+    if (preg_match('/^INSERT\s+INTO\s+`?([A-Za-z0-9_]+)`?/i', ltrim($stmt), $m)) {
+        return $m[1];
+    }
+    return '';
 }
 
 $sql         = file_get_contents($schemaFile);
 $statements  = migrateSplitStatements($sql);
 $dirty       = false;
-$seedApplied = false;
+$seeded      = [];
 
 foreach ($statements as $stmt) {
     $head = strtoupper(substr(ltrim($stmt), 0, 24));
 
-    // CREATE DATABASE / USE are skipped: the DSN already targets DB_NAME, so
-    // tables are created directly inside the configured (Railway) database.
-    if (str_starts_with($head, 'CREATE DATABASE') || str_starts_with($head, 'USE ')) {
+    // Skipped, never executed at boot:
+    //   * CREATE DATABASE / USE  — the DSN already targets DB_NAME, so tables
+    //     are created directly inside the configured (Railway) database.
+    //   * TRUNCATE TABLE / DELETE FROM  — destructive "reset the database"
+    //     statements from schema.sql. Running them on every boot would wipe
+    //     real user data on each deploy; seeding is idempotent instead.
+    if (str_starts_with($head, 'CREATE DATABASE')
+        || str_starts_with($head, 'USE ')
+        || str_starts_with($head, 'TRUNCATE TABLE')
+        || str_starts_with($head, 'DELETE FROM')) {
         continue;
     }
 
     $isSeed = str_starts_with($head, 'INSERT INTO');
 
-    // Seed rows only into a pristine database (no duplicates, no overwrites).
-    if ($isSeed && !$fresh) {
-        continue;
+    if ($isSeed) {
+        $seedTable = migrateSeedTable($stmt);
+        if ($seedTable === '') {
+            continue;
+        }
+        // Seed only when that specific table is empty. Idempotent: once any
+        // row exists (ours or real user data) the demo rows are never added.
+        $count = migrateTableRowCount($pdo, $seedTable);
+        if ($count > 0) {
+            migrateLog('SKIP seeding ' . $seedTable . ' (already has ' . $count . ' rows)', $quiet);
+            continue;
+        }
+        if ($count < 0) {
+            // Table missing at this point (should not happen after CREATE IF
+            // NOT EXISTS) — skip rather than abort the boot.
+            migrateLog('WARNING: seeding skipped, table not found: ' . $seedTable, $quiet);
+            continue;
+        }
     }
 
     try {
         $pdo->exec($stmt);
-        if ($isSeed) { $seedApplied = true; }
+        if ($isSeed) { $seeded[] = $seedTable; }
     } catch (Throwable $e) {
         if ($isSeed) {
-            migrateLog('WARNING: seed skipped (' . $e->getMessage() . ')', $quiet);
+            migrateLog('WARNING: seeding ' . $seedTable . ' failed (' . $e->getMessage() . ')', $quiet);
         } else {
             $dirty = true;
             migrateLog(
@@ -204,8 +238,8 @@ ensureSchemaUpgrades($pdo);
 
 migrateLog(
     $dirty
-        ? 'Migration finished WITH ERRORS (fresh=' . ($fresh ? 'yes' : 'no') . ', seeded=' . ($seedApplied ? 'yes' : 'no') . ').'
-        : 'Migration OK (fresh=' . ($fresh ? 'yes' : 'no') . ', seeded=' . ($seedApplied ? 'yes' : 'no') . ').',
+        ? 'Migration finished WITH ERRORS (seeded: ' . implode(', ', array_unique($seeded)) . ').'
+        : 'Migration OK (seeded: ' . (count($seeded) ? implode(', ', array_unique($seeded)) : 'none') . ').',
     $quiet
 );
 
