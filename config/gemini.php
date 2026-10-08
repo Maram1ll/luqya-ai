@@ -314,8 +314,11 @@ function callGeminiAPI(string $prompt, int $maxTokens = 512): ?string {
         ],
     ], JSON_UNESCAPED_UNICODE);
 
-    // قائمة النماذج للتجربة بدءاً من النموذج المحدد ثم النماذج البديلة المدعومة
+    // قائمة النماذج للتجربة بدءاً من النموذج المحدد ثم النماذج البديلة المدعومة.
+    // نكتفي بأول 3 نماذج فقط: التبديل لجسّ 404/503 المفيد، دون تحويل فشل النموذج
+    // الأساسي إلى سلسلة انتظار طويلة (كل نموذج له مهلة مستقلة).
     $modelsToTry = array_values(array_unique(array_merge([GEMINI_MODEL], GEMINI_FALLBACK_MODELS)));
+    $modelsToTry = array_slice($modelsToTry, 0, 3);
     $lastErrorData = null;
 
     foreach ($modelsToTry as $model) {
@@ -488,6 +491,7 @@ function callGeminiVisionAPI(string $imageBase64, string $mimeType, string $prom
     }
 
     $modelsToTry = array_values(array_unique(array_merge([GEMINI_MODEL], GEMINI_FALLBACK_MODELS)));
+    $modelsToTry = array_slice($modelsToTry, 0, 3);
     $lastResult  = null;
 
     foreach ($modelsToTry as $currentModel) {

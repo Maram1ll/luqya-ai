@@ -481,11 +481,15 @@ function isSupportedImageType(type) {
 }
 
 /**
- * تجهيز الصورة قبل الإرسال: HEIC/الصور الضخمة تُحوَّل إلى JPEG مضغوط
- * لضمان قبولها من خادم Gemini Vision ومعالجتها بنجاح.
+ * تجهيز الصورة قبل الإرسال لضمان حجم/أبعاد مناسبة لمحرك الرؤية:
+ * - الصور الصغيرة المدعومة (حتى 1.2MB) تُرسل كما هي بلا إعادة ترميز (أسرع).
+ * - كل صورة أكبر أو بصيغة غير مدعومة تُصغَّر إلى أقصى 1600px وتُضغط JPEG بدقة 0.85،
+ *   فيصغر حجم الحمولة المرسلة إلى Gemini Vision — مما يسرّع الرفع وزمن الاستدلال
+ *   على بيئات مثل Railway ويقلل فرص انتهاء المهلة.
  */
 function prepareImageForVision(file) {
-  if (isSupportedImageType(file.type) && file.size <= 2.5 * 1024 * 1024) {
+  const PASS_THROUGH_LIMIT = 1.2 * 1024 * 1024; // 1.2MB
+  if (isSupportedImageType(file.type) && file.size <= PASS_THROUGH_LIMIT) {
     return Promise.resolve(file);
   }
 
@@ -493,7 +497,7 @@ function prepareImageForVision(file) {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const scale = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+      const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
       canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -506,7 +510,7 @@ function prepareImageForVision(file) {
         if (!blob) { reject(new Error('تعذر تحويل الصورة إلى صيغة JPEG.')); return; }
         const name = file.name.replace(/\.[^.]+$/, '') + '_optimized.jpg';
         resolve(new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() }));
-      }, 'image/jpeg', 0.92);
+      }, 'image/jpeg', 0.85);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -535,8 +539,22 @@ function normalizeUniversityId(raw) {
 /**
  * إرسال الصورة إلى api/vision_ai.php ومعالجة الاستجابة بأمان
  * (تتفادى أخطاء تحليل JSON القادمة من الخادم بقراءة نصية أولاً).
+ *
+ * يستخدم XMLHttpRequest بدل fetch للحصول على ثلاث مزايا بدون كسر المسار:
+ *   1) مهلة صريحة (110 ثانية) — الصفحة لا تعلق في "جارٍ التحليل" إلى الأبد
+ *      إذا توقف خادم Railway أو بطأت استجابة Gemini.
+ *   2) نسبة تقدّم الرفع ثم عدّاد زمن التحليل تنعكسان عبر options.onStatus
+ *      على شريط حالة المعاينة لحظياً.
+ *   3) سلوك خطأ متطابق مع السابق (رسالة واضحة + قراءة نصية لتفادي JSON مكسور).
+ * @param {File} file
+ * @param {string} mode 'id_card' | 'general_item'
+ * @param {string} reportType 'lost' | 'found'
+ * @param {{onStatus?: (msg: string) => void}} [options]
  */
-async function sendImageToVision(file, mode, reportType) {
+async function sendImageToVision(file, mode, reportType, options = {}) {
+  const onStatus = (typeof options.onStatus === 'function') ? options.onStatus : null;
+  if (onStatus) onStatus(' جارٍ تجهيز الصورة...');
+
   const optimized = await prepareImageForVision(file);
   const formData = new FormData();
   formData.append('image', optimized);
@@ -544,18 +562,57 @@ async function sendImageToVision(file, mode, reportType) {
   formData.append('report_type', reportType);
   formData.append('type', reportType);
 
-  const response = await fetch(VISION_API_URL, { method: 'POST', body: formData });
-  const rawText = await response.text();
-  let payload;
-  try {
-    payload = JSON.parse(rawText);
-  } catch (parseError) {
-    throw new Error('استجابة غير صالحة من الخادم: ' + rawText.replace(/<[^>]*>?/g, ' ').trim().substring(0, 200));
-  }
-  if (!response.ok || !payload.success || !payload.data) {
-    throw new Error(payload.message || ('فشل تحليل الصورة (HTTP ' + response.status + ').'));
-  }
-  return payload.data;
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const started = Date.now();
+    let uploadDone = false;
+
+    const elapsedTicker = setInterval(() => {
+      if (!onStatus) return;
+      const secs = Math.round((Date.now() - started) / 1000);
+      onStatus(uploadDone
+        ? ' جارٍ التحليل بالرؤية الذكية... (' + secs + ' ث)'
+        : ' جارٍ إرسال الصورة... (' + secs + ' ث)');
+    }, 1000);
+
+    const stopTicker = () => clearInterval(elapsedTicker);
+
+    xhr.open('POST', VISION_API_URL);
+    xhr.timeout = 110000;
+    xhr.ontimeout = () => {
+      stopTicker();
+      reject(new Error('انتهت مهلة تحليل الصورة. الرجاء المحاولة مرة أخرى.'));
+    };
+    xhr.onerror = () => {
+      stopTicker();
+      reject(new Error('تعذر الاتصال بخادم التحليل. تحقق من اتصالك ثم أعد المحاولة.'));
+    };
+    xhr.upload.onprogress = (e) => {
+      if (!e.lengthComputable || !onStatus) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      if (pct >= 100) {
+        uploadDone = true;
+      } else {
+        onStatus(' جارٍ إرسال الصورة (' + pct + '%)...');
+      }
+    };
+    xhr.onload = () => {
+      stopTicker();
+      let payload;
+      try {
+        payload = JSON.parse(xhr.responseText);
+      } catch (parseError) {
+        reject(new Error('استجابة غير صالحة من الخادم: ' + xhr.responseText.replace(/<[^>]*>?/g, ' ').trim().substring(0, 200)));
+        return;
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && payload.success && payload.data) {
+        resolve(payload.data);
+        return;
+      }
+      reject(new Error(payload.message || ('فشل تحليل الصورة (HTTP ' + xhr.status + ').')));
+    };
+    xhr.send(formData);
+  });
 }
 
 /**
@@ -973,7 +1030,12 @@ async function analyzeImageWithAI(inputElement, modalType, options = {}) {
       }
     }
 
-    const aiData = await sendImageToVision(file, mode, reportType);
+    const aiData = await sendImageToVision(file, mode, reportType, {
+      // تحديث شريط حالة المعاينة لحظياً: نسبة إرسال الصورة ثم مدة التحليل
+      onStatus: (msg) => {
+        if (previewStatus && previewStatus.text) previewStatus.text.textContent = msg;
+      }
+    });
 
     if (!isCurrent()) {
       // نتيجة تحليل مُلغى (صورة أحدث أو إغلاق النافذة): لا نلمس الحقول النشطة
