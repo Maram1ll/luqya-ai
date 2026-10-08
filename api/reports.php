@@ -130,39 +130,82 @@ if ($action === 'create') {
     ]);
 }
 
-// 2. إغلاق البلاغ من قبل صاحبه
+// 2. إغلاق/حذف البلاغ من قبل صاحبه (سبب إلزامي يحدده المستخدم)
 if ($action === 'close') {
     requireCsrf();
+    enforceRateLimit('close_report', 10, 300);
     if (!isLoggedIn()) {
         jsonResponse(['success' => false, 'message' => 'غير مصرح'], 401);
     }
     $currentUser = getCurrentUser();
     $report_id = intval($_POST['report_id'] ?? 0);
 
-    // التأكد من أن البلاغ يخص المستخدم الحالي
-    $own = $pdo->prepare("SELECT id FROM reports WHERE id = ? AND user_id = ?");
+    // سبب الإغلاق إلزامي: found | mistaken | other (مع نص حر قصير عند "other")
+    $reasonKey  = (string) ($_POST['reason_key'] ?? '');
+    $reasonText = trim((string) ($_POST['reason'] ?? ''));
+    if (!in_array($reasonKey, ['found', 'mistaken', 'other'], true)) {
+        jsonResponse(['success' => false, 'message' => 'يرجى تحديد سبب إغلاق البلاغ.'], 400);
+    }
+    if ($reasonKey === 'other' && $reasonText === '') {
+        jsonResponse(['success' => false, 'message' => 'يرجى كتابة السبب في حقل «سبب آخر».'], 400);
+    }
+    $reasonText = mb_substr($reasonText, 0, 120);
+
+    // التأكد من أن البلاغ يخص المستخدم الحالي ولم يُغلق مسبقاً
+    $own = $pdo->prepare("SELECT id, status, title FROM reports WHERE id = ? AND user_id = ?");
     $own->execute([$report_id, $currentUser['id']]);
-    $ownedId = (int) $own->fetchColumn();
-    if ($ownedId <= 0) {
+    $report = $own->fetch();
+    if (!$report) {
         jsonResponse(['success' => false, 'message' => 'البلاغ غير موجود أو لا تملك صلاحية إغلاقه.'], 404);
+    }
+    if (in_array($report['status'], ['resolved', 'cancelled'], true)) {
+        jsonResponse(['success' => false, 'message' => 'هذا البلاغ مغلق مسبقاً.'], 409);
     }
 
     require_once __DIR__ . '/../config/matching.php';
+    $idList = collectMatchedReportIds($pdo, [$report_id]);
+    if (empty($idList)) $idList = [$report_id];
 
-    // إغلاق البلاغ وقرينه المطابق (المفقود + المعثور) معاً منعاً لبقاء أي طرف معلّقاً
-    $idList = collectMatchedReportIds($pdo, [$ownedId]);
-    if (empty($idList)) $idList = [$ownedId];
-    $ph = implode(',', array_fill(0, count($idList), '?'));
+    if ($reasonKey === 'found') {
+        // تم العثور على العنصر واسترداده: يُعَدّل البلاغ وقرينه المطابق كمكتمل/مستلم
+        $ph = implode(',', array_fill(0, count($idList), '?'));
+        $pdo->prepare("UPDATE reports SET status = 'resolved', resolved_at = NOW() WHERE id IN ($ph)")->execute($idList);
+        $pdo->prepare("UPDATE matches SET status = 'verified', resolved_at = NOW() WHERE lost_report_id IN ($ph) OR found_report_id IN ($ph)")->execute(array_merge($idList, $idList));
+        $statusLabel = 'resolved';
+        $message = 'تم تحديث البلاغ وقرينه المطابق كمكتمل / مستلم بنجاح.';
+    } else {
+        // بلاغ خاطئ أو سبب آخر: إلغاء البلاغ مع فكّ أي مطابقة وردّ القرين إلى المخزون النشط
+        $ownUpd = $pdo->prepare("UPDATE reports SET status = 'cancelled', resolved_at = NOW(), pickup_code = NULL WHERE id = ?");
+        $ownUpd->execute([$report_id]);
+        $mUpd = $pdo->prepare("UPDATE matches SET status = 'rejected', pickup_code = NULL WHERE lost_report_id = ? OR found_report_id = ?");
+        $mUpd->execute([$report_id, $report_id]);
+        $counterparts = array_values(array_diff($idList, [$report_id]));
+        if (!empty($counterparts)) {
+            $cph = implode(',', array_fill(0, count($counterparts), '?'));
+            $cUpd = $pdo->prepare("UPDATE reports SET status = 'active' WHERE id IN ($cph) AND status = 'matched'");
+            $cUpd->execute($counterparts);
+        }
+        $statusLabel = 'cancelled';
+        $message = 'تم إغلاق البلاغ بنجاح وسيختفي من قوائم البحث النشطة.';
+    }
 
-    $stmt = $pdo->prepare("UPDATE reports SET status = 'resolved', resolved_at = NOW() WHERE id IN ($ph)");
-    $stmt->execute($idList);
-
-    $stmt = $pdo->prepare("UPDATE matches SET status = 'verified', resolved_at = NOW() WHERE lost_report_id IN ($ph) OR found_report_id IN ($ph)");
-    $stmt->execute(array_merge($idList, $idList));
+    // سجل تدقيق بالسبب في activity_logs (دون تغيير بنية الجداول)
+    $reasonLog = match ($reasonKey) {
+        'found'    => 'تم العثور على العنصر واسترداده',
+        'mistaken' => 'بلاغ خاطئ',
+        default    => $reasonText !== '' ? $reasonText : 'سبب آخر',
+    };
+    $logStmt = $pdo->prepare("INSERT INTO activity_logs (action_type, item_title, details, user_name, created_at) VALUES ('user_close', ?, ?, ?, NOW())");
+    $logStmt->execute([
+        mb_substr($report['title'], 0, 200),
+        'أغلق المستخدم بلاغه (#' . $report_id . ') — السبب: ' . $reasonLog,
+        $currentUser['full_name'] !== '' ? $currentUser['full_name'] : ($currentUser['university_id'] ?: 'مستخدم'),
+    ]);
 
     jsonResponse([
-        'success' => true,
-        'message' => 'تم تحديد البلاغ وقرينه المطابق كمكتمل / مستلم بنجاح.',
+        'success'            => true,
+        'message'            => $message,
+        'status'             => $statusLabel,
         'updated_report_ids' => $idList
     ]);
 }

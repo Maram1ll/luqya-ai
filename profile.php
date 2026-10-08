@@ -38,6 +38,7 @@ function statusAr(string $s): string {
         'matched'        => 'مطابق بالذكاء الاصطناعي',
         'pending_pickup' => 'بانتظار الاستلام',
         'resolved'       => 'تم الاستلام',
+        'cancelled'      => 'ملغي',
         default          => $s,
     };
 }
@@ -191,9 +192,9 @@ require_once __DIR__ . '/views/header.php';
                 </div>
               </div>
 
-              <?php if ($rep['status'] !== 'resolved'): ?>
+              <?php if (!in_array($rep['status'], ['resolved', 'cancelled'], true)): ?>
                 <div class="report-actions" style="display:flex;justify-content:flex-end;gap:10px;margin-top:1rem;padding-top:10px;border-top:1px dashed var(--border-color);">
-                  <button class="btn btn-outline btn-sm" onclick="closeMyReport(<?= intval($rep['id']); ?>)">تحديد كمُغلَق / تم الاسترداد</button>
+                  <button class="btn btn-outline btn-sm" onclick="closeMyReport(<?= intval($rep['id']); ?>)">إغلاق / حذف البلاغ</button>
                 </div>
               <?php endif; ?>
             </div>
@@ -272,20 +273,98 @@ function toggleReportDetails(target) {
 }
 
 function closeMyReport(id) {
-  if (!confirm('هل أنت متأكد من إغلاق هذا البلاغ وتحديثه كمكتمل؟')) return;
-  const fd = new FormData();
-  fd.append('report_id', id);
-  fd.append('_csrf', window.LUQYA_CSRF);
-  fetch('api/reports.php?action=close', { method:'POST', body: fd })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        showToast(data.message, 'success');
-        setTimeout(() => window.location.reload(), 1000);
-      } else {
-        showToast(data.message || 'حدث خطأ في إغلاق البلاغ', 'danger');
-      }
-    });
+  const existing = document.getElementById('luqyaCloseModal');
+  if (existing) existing.remove();
+
+  const REASONS = [
+    { key: 'found',    label: 'تم العثور على العنصر واسترداده' },
+    { key: 'mistaken', label: 'بلاغ خاطئ (أدخلته بالخطأ)' },
+    { key: 'other',    label: 'سبب آخر' }
+  ];
+
+  const overlay = document.createElement('div');
+  overlay.id = 'luqyaCloseModal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,25,41,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;direction:rtl;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#FFFFFF;border-radius:14px;padding:1.6rem;width:100%;max-width:400px;box-shadow:var(--shadow-md);border:1px solid var(--border-color);box-sizing:border-box;';
+
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+    + '<h3 style="margin:0;font-size:1.05rem;color:var(--navy-primary);">إغلاق / حذف البلاغ (#' + id + ')</h3>'
+    + '<button type="button" aria-label="إغلاق النافذة" style="border:none;background:none;cursor:pointer;font-size:1.2rem;color:var(--text-muted);line-height:1;">&times;</button>'
+    + '</div>'
+    + '<p style="margin:0 0 1rem;font-size:0.82rem;color:var(--text-muted);">يرجى تحديد سبب الإغلاق — لا يمكن التراجع بعد التأكيد.</p>';
+
+  REASONS.forEach((r, i) => {
+    html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:10px;cursor:pointer;background:#FFFFFF;">'
+      + '<input type="radio" name="luqyaCloseReason" value="' + r.key + '" ' + (i === 0 ? 'checked' : '') + ' style="margin-top:3px;accent-color:var(--cyan-primary);">'
+      + '<span style="font-size:0.9rem;color:var(--navy-primary);font-weight:600;">' + r.label + '</span>'
+      + '</label>';
+  });
+
+  html += '<div id="luqyaCloseOtherWrap" style="display:none;margin-bottom:1rem;">'
+    + '<input type="text" id="luqyaCloseOther" maxlength="120" placeholder="اكتب السبب هنا..." style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border-color);border-radius:10px;font-size:0.9rem;font-family:inherit;outline:none;">'
+    + '</div>';
+
+  html += '<div style="display:flex;gap:10px;margin-top:1rem;">'
+    + '<button type="button" id="luqyaCloseSubmit" class="btn btn-primary" style="flex:1;">تأكيد الإغلاق</button>'
+    + '<button type="button" id="luqyaCloseCancel" class="btn btn-outline" style="flex:1;">إلغاء</button>'
+    + '</div>';
+
+  panel.innerHTML = html;
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  function closeOverlay() {
+    const m = document.getElementById('luqyaCloseModal');
+    if (m) m.remove();
+  }
+  panel.querySelector('#luqyaCloseCancel').addEventListener('click', closeOverlay);
+  panel.querySelector('[aria-label="إغلاق النافذة"]').addEventListener('click', closeOverlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+
+  const otherWrap = panel.querySelector('#luqyaCloseOtherWrap');
+  const radios = panel.querySelectorAll('input[name="luqyaCloseReason"]');
+  function syncOther() {
+    const sel = panel.querySelector('input[name="luqyaCloseReason"]:checked');
+    otherWrap.style.display = (sel && sel.value === 'other') ? 'block' : 'none';
+  }
+  radios.forEach(r => r.addEventListener('change', syncOther));
+
+  panel.querySelector('#luqyaCloseSubmit').addEventListener('click', () => {
+    const sel = panel.querySelector('input[name="luqyaCloseReason"]:checked');
+    if (!sel) { showToast('يرجى تحديد سبب الإغلاق', 'danger'); return; }
+    const fd = new FormData();
+    fd.append('report_id', id);
+    fd.append('reason_key', sel.value);
+    fd.append('reason', sel.value === 'other' ? (panel.querySelector('#luqyaCloseOther').value || '') : '');
+    fd.append('_csrf', window.LUQYA_CSRF);
+
+    const submitBtn = panel.querySelector('#luqyaCloseSubmit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'جاري الإغلاق...';
+
+    fetch('api/reports.php?action=close', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          closeOverlay();
+          showToast(data.message, 'success');
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'تأكيد الإغلاق';
+          showToast(data.message || 'حدث خطأ في إغلاق البلاغ', 'danger');
+        }
+      })
+      .catch(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'تأكيد الإغلاق';
+        showToast('خطأ في الاتصال بالشبكة', 'danger');
+      });
+  });
 }
 
 // ============================================================================
@@ -350,7 +429,7 @@ function closeMyReport(id) {
         refreshLifecycle(card.querySelector('.report-lifecycle'), rep.status);
 
         const actions = card.querySelector('.report-actions');
-        if (rep.status === 'resolved') {
+        if (rep.status === 'resolved' || rep.status === 'cancelled') {
           if (actions) actions.remove();
         } else if (!actions) {
           const div = document.createElement('div');
@@ -358,7 +437,7 @@ function closeMyReport(id) {
           div.style.cssText = 'display:flex;justify-content:flex-end;gap:10px;margin-top:1rem;padding-top:10px;border-top:1px dashed var(--border-color);';
           const btn = document.createElement('button');
           btn.className = 'btn btn-outline btn-sm';
-          btn.textContent = 'تحديد كمُغلَق / تم الاسترداد';
+          btn.textContent = 'إغلاق / حذف البلاغ';
           btn.addEventListener('click', () => closeMyReport(rep.id));
           div.appendChild(btn);
           card.appendChild(div);
