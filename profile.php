@@ -138,9 +138,10 @@ require_once __DIR__ . '/views/header.php';
       <?php endif; ?>
     </div>
     <p style="font-size:0.88rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.7;">
-      الرمز الأمني يُطلب للتحقق من هويتك عند إعادة تعيين كلمة المرور من صفحة
+      الرمز الأمني يضيف طبقة حماية إضافية عند إعادة تعيين كلمة المرور من صفحة
       <a href="forgot_password.php" style="color:var(--cyan-primary);font-weight:600;">نسيت كلمة المرور</a>.
-      يمكنك تعيينه أو تغييره من هنا بعد تأكيد كلمة المرور الحالية.
+      الحسابات التي أُنشئت قبل تفعيل الرمز الأمني تعيد التعيين بالرقم الجامعي والبريد فقط. يمكنك
+      تعيينه أو تغييره من هنا بعد تأكيد كلمة المرور الحالية.
     </p>
     <form id="formSecurityCode" style="max-width:520px;display:flex;flex-direction:column;gap:10px;">
       <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">

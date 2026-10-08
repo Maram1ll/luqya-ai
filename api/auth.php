@@ -189,22 +189,33 @@ if ($action === 'forgot_password') {
     }
     ensurePasswordResetsTable($pdo);
 
-    // بصمة وهمية تُستخدم عند غياب الحساب أو غياب الرمز الأمني لتحقيق زمن استجابة
-    // متقارب عبر مسار فحص bcrypt واحد (منع الاستدلال الزمني على وجود الحساب).
+    // بصمة وهمية تُستخدم عند غياب الحساب أو عدم وجود رمز أمني مسجّل لتحقيق زمن
+    // استجابة متقارب عبر مسار فحص bcrypt واحد (منع الاستدلال الزمني على وجود الحساب).
     $dummyHash = '$2y$10$YSTA1rz2GtZLSKkXWNZTS.viTBDWlxJH/GhBtyF4AmjvjQw4VUXWa';
 
     // التحقق الصارم المسبق: الرقم الجامعي المقدّم يجب أن يطابق البريد المسجّل
-    // تماماً (lower-case) ورمز الأمن المرتبط بالحساب (password_verify).
+    // تماماً (lower-case). أما الرمز الأمني فيُشترط فقط للحسابات التي أنشأت رمزاً
+    // (security_code_hash غير فارغ)؛ الحسابات القديمة التي أُنشئت قبل تفعيل
+    // الرمز الأمني يُعاد تعيينها بالرقم الجامعي والبريد فقط.
     $verifiedUserId = null;
-    if ($universityId !== '' && $email !== '' && $securityCode !== '') {
+    if ($universityId !== '' && $email !== '') {
         $stmt = $pdo->prepare("SELECT id, email, security_code_hash FROM users WHERE university_id = ?");
         $stmt->execute([$universityId]);
         $candidate = $stmt->fetch();
 
         if ($candidate) {
-            $storedHash  = (string) ($candidate['security_code_hash'] ?? '');
-            $codeMatches = password_verify($securityCode, $storedHash !== '' ? $storedHash : $dummyHash);
+            $storedHash   = (string) ($candidate['security_code_hash'] ?? '');
             $emailMatches = (strtolower((string) $candidate['email']) === $email);
+
+            if ($storedHash === '') {
+                // حساب قديم بلا رمز أمني (أُنشئ قبل هذه الميزة): يكفي الرقم
+                // الجامعي + البريد المسجّل — مع فحص وهمي لتقارب زمن الاستجابة.
+                $codeMatches = true;
+                password_verify($securityCode, $dummyHash);
+            } else {
+                $codeMatches = password_verify($securityCode, $storedHash);
+            }
+
             if ($codeMatches && $emailMatches) {
                 $verifiedUserId = (int) $candidate['id'];
             }

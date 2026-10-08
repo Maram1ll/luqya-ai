@@ -16,7 +16,7 @@ require_once __DIR__ . '/views/header.php';
       <?php if ($step === 'reset'): ?>
         <p style="font-size:0.88rem;color:var(--text-muted);">أدخل رمز إعادة التعيين وكلمة المرور الجديدة.</p>
       <?php else: ?>
-        <p style="font-size:0.88rem;color:var(--text-muted);">أدخل رقمك الجامعي مع بريدك الجامعي ورمزك الأمني للتحقق من هويتك قبل إصدار رمز إعادة الضبط.</p>
+        <p style="font-size:0.88rem;color:var(--text-muted);">أدخل رقمك الجامعي وبريدك الجامعي للتحقق من هويتك؛ إن كنت قد أنشأت رمزاً أمنياً فسيلزم إدخاله أيضاً.</p>
       <?php endif; ?>
     </div>
 
@@ -62,13 +62,14 @@ require_once __DIR__ . '/views/header.php';
         </div>
 
         <div class="form-group">
-          <label class="form-label">الرمز الأمني</label>
+          <label class="form-label">الرمز الأمني <span style="color:var(--text-muted);font-weight:400;font-size:0.8rem;">(اختياري للحسابات القديمة)</span></label>
           <input type="password" class="form-control" name="security_code" id="fpSecurityCode"
-                 placeholder="الرمز الأمني المرتبط بحسابك" required minlength="6" maxlength="64">
+                 placeholder="الرمز الأمني المرتبط بحسابك (إن وُجد)" minlength="6" maxlength="64">
           <small style="display:block;margin-top:6px;color:var(--text-muted);line-height:1.7;">
             الرمز الأمني هو رمز الاسترجاع الذي تُنشئه من
             <a href="profile.php" style="color:var(--cyan-primary);font-weight:600;">الملف الشخصي</a>.
-            ضباط الأمن يستخدمون كود الأمن الخاص بهم (مثال: SEC-USR-1).
+            ضباط الأمن يستخدمون كود الأمن الخاص بهم (مثال: SEC-USR-1). الحسابات التي أُنشئت قبل
+            تفعيل الرمز الأمني تُعيد التعيين بالرقم الجامعي والبريد فقط، لكن ننصح بتعيين رمز أمني لاحقاً.
           </small>
         </div>
 
