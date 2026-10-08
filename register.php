@@ -63,6 +63,12 @@ require_once __DIR__ . '/views/header.php';
         </div>
       </div>
 
+      <div class="form-group">
+        <label class="form-label">الرمز الأمني للاسترجاع <span style="color:var(--text-muted);font-weight:400;font-size:0.8rem;">(اختياري لكن موصى به)</span></label>
+        <input type="password" class="form-control" name="security_code" id="regSecurityCode"
+               placeholder="6 أحرف أو أكثر — سيُطلب عند إعادة تعيين كلمة المرور" minlength="6" maxlength="64" autocomplete="new-password">
+      </div>
+
       <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem;">إنشاء الحساب</button>
     </form>
 

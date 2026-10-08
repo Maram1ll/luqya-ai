@@ -16,7 +16,7 @@ require_once __DIR__ . '/views/header.php';
       <?php if ($step === 'reset'): ?>
         <p style="font-size:0.88rem;color:var(--text-muted);">أدخل رمز إعادة التعيين وكلمة المرور الجديدة.</p>
       <?php else: ?>
-        <p style="font-size:0.88rem;color:var(--text-muted);">أدخل الرقم الجامعي أو البريد الجامعي لبدء طلب إعادة الضبط.</p>
+        <p style="font-size:0.88rem;color:var(--text-muted);">أدخل رقمك الجامعي مع بريدك الجامعي ورمزك الأمني للتحقق من هويتك قبل إصدار رمز إعادة الضبط.</p>
       <?php endif; ?>
     </div>
 
@@ -50,9 +50,26 @@ require_once __DIR__ . '/views/header.php';
       <form id="formForgotPass" onsubmit="handleForgotSubmit(event)">
         <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
         <div class="form-group">
-          <label class="form-label">الرقم الجامعي أو البريد الجامعي</label>
-          <input type="text" class="form-control" name="identifier"
-                 placeholder="مثال: S000000001 أو s000000001@uoh.edu.sa" required>
+          <label class="form-label">الرقم الجامعي</label>
+          <input type="text" class="form-control" name="university_id" id="fpUniversityId"
+                 placeholder="مثال: S000000001 أو SEC-USR-1" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">البريد الجامعي</label>
+          <input type="email" class="form-control" name="email" id="fpEmail"
+                 placeholder="مثال: s000000001@uoh.edu.sa" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">الرمز الأمني</label>
+          <input type="password" class="form-control" name="security_code" id="fpSecurityCode"
+                 placeholder="الرمز الأمني المرتبط بحسابك" required minlength="6" maxlength="64">
+          <small style="display:block;margin-top:6px;color:var(--text-muted);line-height:1.7;">
+            الرمز الأمني هو رمز الاسترجاع الذي تُنشئه من
+            <a href="profile.php" style="color:var(--cyan-primary);font-weight:600;">الملف الشخصي</a>.
+            ضباط الأمن يستخدمون كود الأمن الخاص بهم (مثال: SEC-USR-1).
+          </small>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem;">إرسال تعليمات إعادة الضبط</button>

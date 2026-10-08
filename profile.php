@@ -18,6 +18,18 @@ if ($pdo) {
     $myReports = normalizeMatchedStatuses($pdo, $myReports);
     $potentialMatches = getPotentialMatchesForUser($currentUser['id'], $pdo, MATCH_STUDENT_THRESHOLD, 8);
 
+    // حالة الرمز الأمني للاسترجاع (يُطلب عند إعادة تعيين كلمة المرور)
+    ensureSecurityCodeHashColumn($pdo);
+    $hasSecurityCode = false;
+    try {
+        $stmt = $pdo->prepare("SELECT security_code_hash FROM users WHERE id = ?");
+        $stmt->execute([$currentUser['id']]);
+        $row = $stmt->fetch();
+        $hasSecurityCode = $row && !empty($row['security_code_hash']);
+    } catch (PDOException $e) {
+        $hasSecurityCode = false;
+    }
+
     // إحصائيات سريعة لعرضها في رأس الملف الشخصي
     $statsTotal    = 0;
     $statsTracking = 0;
@@ -114,6 +126,41 @@ require_once __DIR__ . '/views/header.php';
       <strong>سجل نشاط ضابط الأمن:</strong> تعرض هذه الصفحة سجلات المعثورات التي سجّلتها في مخزون مكتب الأمن مع مسار تتبع حالتها. تتم الإضافة والتعديل والحذف والتحقق عبر <a href="security_dashboard.php" style="font-weight:700;color:var(--cyan-primary);">لوحة تحكم الأمن</a>.
     </div>
   <?php endif; ?>
+
+  <!-- SECURITY CODE SETTINGS -->
+  <div style="background:#FFFFFF;border-radius:14px;border:1px solid var(--border-color);box-shadow:var(--shadow-sm);padding:1.5rem;margin-bottom:2rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+      <h3 style="margin:0;color:var(--navy-primary);">الإعدادات الأمنية</h3>
+      <?php if ($hasSecurityCode): ?>
+        <span style="font-size:0.8rem;background:rgba(0,168,181,0.12);color:var(--cyan-primary);padding:4px 12px;border-radius:8px;font-weight:700;">تم تعيين الرمز الأمني</span>
+      <?php else: ?>
+        <span style="font-size:0.8rem;background:rgba(200,120,60,0.12);color:#B45309;padding:4px 12px;border-radius:8px;font-weight:700;">لم يتم تعيين رمز أمني بعد</span>
+      <?php endif; ?>
+    </div>
+    <p style="font-size:0.88rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.7;">
+      الرمز الأمني يُطلب للتحقق من هويتك عند إعادة تعيين كلمة المرور من صفحة
+      <a href="forgot_password.php" style="color:var(--cyan-primary);font-weight:600;">نسيت كلمة المرور</a>.
+      يمكنك تعيينه أو تغييره من هنا بعد تأكيد كلمة المرور الحالية.
+    </p>
+    <form id="formSecurityCode" style="max-width:520px;display:flex;flex-direction:column;gap:10px;">
+      <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">كلمة المرور الحالية</label>
+        <input type="password" class="form-control" name="current_password" id="scCurrentPassword" required autocomplete="current-password">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">الرمز الأمني الجديد</label>
+        <input type="password" class="form-control" name="security_code" id="scNewCode" required minlength="6" maxlength="64" autocomplete="new-password">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">تأكيد الرمز الأمني</label>
+        <input type="password" class="form-control" name="security_code_confirm" id="scConfirmCode" required minlength="6" maxlength="64" autocomplete="new-password">
+      </div>
+      <div style="margin-top:4px;">
+        <button type="submit" class="btn btn-primary" id="btnSaveSecurityCode">حفظ الرمز الأمني</button>
+      </div>
+    </form>
+  </div>
 
   <!-- REPORTS SECTION -->
   <div class="grid-title-row">
@@ -529,6 +576,53 @@ function closeMyReport(id) {
 
   setInterval(refresh, 15000);
   setTimeout(refresh, 1500);
+})();
+
+// ============================================================================
+// تعيين / تحديث الرمز الأمني للاسترجاع (يشترط تأكيد كلمة المرور الحالية)
+// ============================================================================
+(function securityCodeForm() {
+  const form = document.getElementById('formSecurityCode');
+  if (!form) return;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const fd = new FormData(form);
+    const newCode = (fd.get('security_code') || '').toString();
+    const confirmCode = (fd.get('security_code_confirm') || '').toString();
+
+    if (newCode.length < 6 || newCode.length > 64) {
+      showToast('الرمز الأمني يجب أن يكون بين 6 و 64 حرفاً.', 'danger');
+      return;
+    }
+    if (newCode !== confirmCode) {
+      showToast('الرمزان غير متطابقين.', 'danger');
+      return;
+    }
+
+    const submitBtn = document.getElementById('btnSaveSecurityCode');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'جاري الحفظ...';
+
+    fetch('api/auth.php?action=set_security_code', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'حفظ الرمز الأمني';
+        if (data.success) {
+          form.reset();
+          showToast(data.message || 'تم حفظ الرمز الأمني بنجاح', 'success');
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          showToast(data.message || 'تعذر حفظ الرمز الأمني', 'danger');
+        }
+      })
+      .catch(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'حفظ الرمز الأمني';
+        showToast('خطأ في الاتصال بالشبكة', 'danger');
+      });
+  });
 })();
 </script>
 

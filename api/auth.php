@@ -49,6 +49,17 @@ if ($action === 'register') {
         jsonResponse(['success' => false, 'message' => 'كلمة المرور يجب ألا تقل عن 6 أحرف.'], 400);
     }
 
+    // الرمز الأمني للاسترجاع (اختياري): يُطلب عند إعادة تعيين كلمة المرور،
+    // ويُخزَّن كبصمة password_hash فقط ولا يُعرض أو يُسجَّل لاحقاً.
+    $securityCode = (string) ($_POST['security_code'] ?? '');
+    $securityCodeHash = null;
+    if (trim($securityCode) !== '') {
+        if (strlen($securityCode) < 6 || strlen($securityCode) > 64) {
+            jsonResponse(['success' => false, 'message' => 'الرمز الأمني يجب أن يكون بين 6 و 64 حرفاً.'], 400);
+        }
+        $securityCodeHash = password_hash($securityCode, PASSWORD_DEFAULT);
+    }
+
     $email = generateUniversityEmail($university_id);
     $pdo = getDBConnection();
 
@@ -64,8 +75,9 @@ if ($action === 'register') {
 
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
     ensureUserProfileColumns($pdo);
-    $stmt = $pdo->prepare("INSERT INTO users (university_id, full_name, email, phone, college, major, password_hash, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$university_id, $full_name, $email, $phone, $college, $major, $password_hash, $role]);
+    ensureSecurityCodeHashColumn($pdo);
+    $stmt = $pdo->prepare("INSERT INTO users (university_id, full_name, email, phone, college, major, password_hash, role, security_code_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$university_id, $full_name, $email, $phone, $college, $major, $password_hash, $role, $securityCodeHash]);
 
     $new_user_id = $pdo->lastInsertId();
 
@@ -163,13 +175,12 @@ if ($action === 'forgot_password') {
     requireCsrf();
     enforceRateLimit('forgot_password', 5, 300);
 
-    $identifier = trim($_POST['identifier'] ?? '');
+    $universityId = strtoupper(trim($_POST['university_id'] ?? ''));
+    $email        = strtolower(trim($_POST['email'] ?? ''));
+    $securityCode = (string) ($_POST['security_code'] ?? '');
 
-    if (empty($identifier)) {
-        jsonResponse(['success' => false, 'message' => 'يرجى إدخال الرقم الجامعي أو البريد الجامعي.'], 400);
-    }
-
-    // رسالة عامة موحّدة لكل الحالات: لا تُكشف بيانات المستخدمين أو تُستخدم لفرز الحسابات
+    // رسالة موحّدة عامة لكل النتائج: لا تُكشف أي معلومة عن وجود الحساب أو صحة
+    // البيانات المدخلة (حماية من فرز الحسابات / User Enumeration).
     $genericMessage = 'تم إرسال تعليمات إعادة تعيين كلمة المرور إلى بريدك الجامعي.';
 
     $pdo = getDBConnection();
@@ -178,46 +189,54 @@ if ($action === 'forgot_password') {
     }
     ensurePasswordResetsTable($pdo);
 
-    // تحديد الحساب: قبول الرقم الجامعي (S000000001) أو البريد الجامعي (@uoh.edu.sa)
-    $userId = null;
-    if (validateUniversityID($identifier)) {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE university_id = ?");
-        $stmt->execute([strtoupper($identifier)]);
-        $row = $stmt->fetch();
-        $userId = $row ? (int) $row['id'] : null;
-    } else {
-        $emailCheck = validateInput($identifier, 'email', ['required' => true]);
-        if ($emailCheck['valid']) {
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-            $stmt->execute([$emailCheck['value']]);
-            $row = $stmt->fetch();
-            $userId = $row ? (int) $row['id'] : null;
+    // بصمة وهمية تُستخدم عند غياب الحساب أو غياب الرمز الأمني لتحقيق زمن استجابة
+    // متقارب عبر مسار فحص bcrypt واحد (منع الاستدلال الزمني على وجود الحساب).
+    $dummyHash = '$2y$10$YSTA1rz2GtZLSKkXWNZTS.viTBDWlxJH/GhBtyF4AmjvjQw4VUXWa';
+
+    // التحقق الصارم المسبق: الرقم الجامعي المقدّم يجب أن يطابق البريد المسجّل
+    // تماماً (lower-case) ورمز الأمن المرتبط بالحساب (password_verify).
+    $verifiedUserId = null;
+    if ($universityId !== '' && $email !== '' && $securityCode !== '') {
+        $stmt = $pdo->prepare("SELECT id, email, security_code_hash FROM users WHERE university_id = ?");
+        $stmt->execute([$universityId]);
+        $candidate = $stmt->fetch();
+
+        if ($candidate) {
+            $storedHash  = (string) ($candidate['security_code_hash'] ?? '');
+            $codeMatches = password_verify($securityCode, $storedHash !== '' ? $storedHash : $dummyHash);
+            $emailMatches = (strtolower((string) $candidate['email']) === $email);
+            if ($codeMatches && $emailMatches) {
+                $verifiedUserId = (int) $candidate['id'];
+            }
+        } else {
+            // حساب غير موجود: فحص وهمي لتقارب زمن الاستجابة
+            password_verify($securityCode, $dummyHash);
         }
     }
 
-    if ($userId !== null) {
+    if ($verifiedUserId !== null) {
         // إلغاء أي رموز سابقة غير مستهلكة لنفس الحساب (استخدام فردي صارم)
         $pdo->prepare("DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL")
-            ->execute([$userId]);
+            ->execute([$verifiedUserId]);
 
         // رمز مؤقت آمن عمره 30 دقيقة؛ تُخزَّن بصمته (SHA-256) فقط في قاعدة البيانات
         $rawToken  = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $rawToken);
         $expiresAt = date('Y-m-d H:i:s', time() + 1800);
         $pdo->prepare("INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)")
-            ->execute([$userId, $tokenHash, $expiresAt]);
+            ->execute([$verifiedUserId, $tokenHash, $expiresAt]);
 
         // الرمز الخام لا يُخزَّن ولا يُطبع إلا في بيئة التطوير.
         // في الإنتاج يُرسَل إلى البريد الجامعي ولا يظهر في أي سجل.
         if (isResetTokenExposedToLog()) {
             error_log(
-                'Luqya AI: [DEV ONLY] password reset link for user #' . $userId . ' - ' .
+                'Luqya AI: [DEV ONLY] password reset link for user #' . $verifiedUserId . ' - ' .
                 'forgot_password.php?step=reset&token=' . $rawToken
             );
         }
         error_log(sprintf(
             'Luqya AI: password reset token issued for user #%d (expires %s, token_sha256_prefix=%s)',
-            $userId,
+            $verifiedUserId,
             $expiresAt,
             substr($tokenHash, 0, 12)
         ));
@@ -231,6 +250,50 @@ if ($action === 'forgot_password') {
         'success' => true,
         'message' => $genericMessage
     ]);
+}
+
+if ($action === 'set_security_code') {
+    requireCsrf();
+    enforceRateLimit('set_security_code', 5, 900);
+
+    $currentUser = getCurrentUser();
+    if ($currentUser === null) {
+        jsonResponse(['success' => false, 'message' => 'غير مصرح لك بتنفيذ هذه العملية.'], 401);
+    }
+
+    $currentPassword = (string) ($_POST['current_password'] ?? '');
+    $newCode         = (string) ($_POST['security_code'] ?? '');
+    $confirmCode     = (string) ($_POST['security_code_confirm'] ?? '');
+
+    if ($currentPassword === '' || $newCode === '') {
+        jsonResponse(['success' => false, 'message' => 'يرجى إدخال كلمة المرور الحالية والرمز الأمني الجديد.'], 400);
+    }
+    if (strlen($newCode) < 6 || strlen($newCode) > 64) {
+        jsonResponse(['success' => false, 'message' => 'الرمز الأمني يجب أن يكون بين 6 و 64 حرفاً.'], 400);
+    }
+    if ($newCode !== $confirmCode) {
+        jsonResponse(['success' => false, 'message' => 'الرمزان غير متطابقين.'], 400);
+    }
+
+    $pdo = getDBConnection();
+    if (!$pdo) {
+        jsonResponse(['success' => false, 'message' => 'خطأ في الاتصال بقاعدة البيانات.'], 500);
+    }
+    ensureSecurityCodeHashColumn($pdo);
+
+    // التأكد من كلمة المرور الحالية قبل السماح بتعيين أو تغيير الرمز الأمني
+    $stmt = $pdo->prepare("SELECT password_hash FROM users WHERE id = ?");
+    $stmt->execute([$currentUser['id']]);
+    $user = $stmt->fetch();
+    if (!$user || !password_verify($currentPassword, $user['password_hash'])) {
+        jsonResponse(['success' => false, 'message' => 'كلمة المرور الحالية غير صحيحة.'], 400);
+    }
+
+    // يُخزَّن الرمز الأمني كبصمة password_hash فقط ولا يُعرض أو يُسجَّل لاحقاً
+    $pdo->prepare("UPDATE users SET security_code_hash = ? WHERE id = ?")
+        ->execute([password_hash($newCode, PASSWORD_DEFAULT), $currentUser['id']]);
+
+    jsonResponse(['success' => true, 'message' => 'تم حفظ الرمز الأمني بنجاح.']);
 }
 
 if ($action === 'reset_password') {
