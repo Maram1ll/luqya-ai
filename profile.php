@@ -143,7 +143,14 @@ require_once __DIR__ . '/views/header.php';
       الحسابات التي أُنشئت قبل تفعيل الرمز الأمني تعيد التعيين بالرقم الجامعي والبريد فقط. يمكنك
       تعيينه أو تغييره من هنا بعد تأكيد كلمة المرور الحالية.
     </p>
-    <form id="formSecurityCode" style="max-width:520px;display:flex;flex-direction:column;gap:10px;">
+    <div>
+      <button type="button" id="btnToggleSecurityCode" class="btn btn-outline" style="display:inline-flex;align-items:center;gap:6px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>
+        تغيير الرمز الأمني
+      </button>
+    </div>
+
+    <form id="formSecurityCode" style="max-width:520px;display:none;flex-direction:column;gap:10px;margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--border-color);">
       <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
       <div class="form-group" style="margin:0;">
         <label class="form-label">كلمة المرور الحالية</label>
@@ -157,8 +164,9 @@ require_once __DIR__ . '/views/header.php';
         <label class="form-label">تأكيد الرمز الأمني</label>
         <input type="password" class="form-control" name="security_code_confirm" id="scConfirmCode" required minlength="6" maxlength="64" autocomplete="new-password">
       </div>
-      <div style="margin-top:4px;">
+      <div style="margin-top:4px;display:flex;gap:8px;">
         <button type="submit" class="btn btn-primary" id="btnSaveSecurityCode">حفظ الرمز الأمني</button>
+        <button type="button" class="btn btn-outline" id="btnCancelSecurityCode">إلغاء</button>
       </div>
     </form>
   </div>
@@ -585,6 +593,27 @@ function closeMyReport(id) {
 (function securityCodeForm() {
   const form = document.getElementById('formSecurityCode');
   if (!form) return;
+
+  const toggleBtn = document.getElementById('btnToggleSecurityCode');
+  const cancelBtn = document.getElementById('btnCancelSecurityCode');
+
+  function setOpen(open) {
+    form.style.display = open ? 'flex' : 'none';
+    if (toggleBtn) toggleBtn.style.display = open ? 'none' : '';
+    if (open && form.querySelector('#scCurrentPassword')) {
+      form.querySelector('#scCurrentPassword').focus();
+    }
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => setOpen(true));
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      form.reset();
+      setOpen(false);
+    });
+  }
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
