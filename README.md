@@ -103,15 +103,47 @@ Set `LUQYA_DEMO_LOGIN=0` in production to hide the panel.
 This build ships **no mailer**. With `LUQYA_EXPOSE_RESET_TOKEN=1` the reset link is
 written to the PHP error log instead of being emailed:
 
-1. Open `forgot_password.php` and submit a university ID or university email.
+1. Open `forgot_password.php` and submit your **university ID** and **registered
+   university email**. If your account has a security code, enter it as well.
 2. Open `C:\xampp\apache\logs\error.log` and find the line starting with
    `Luqya AI: [DEV ONLY] password reset link for user #...`.
 3. Copy the `token=` value and open `forgot_password.php?step=reset&token=<value>`,
    or paste it into the second step.
 
+**Strict identity verification.** Before any token is issued the account is resolved by
+university ID and the email must match the registered address exactly. The security code
+is checked with `password_verify()` against `security_code_hash` and is **required only
+when the account has one** (an officer's code is their `SEC-USR-…` login). Accounts
+created before the security-code feature have no code and reset with university ID +
+email alone, so they are never locked out. The same generic message is returned for every
+outcome, so the endpoint cannot be used to enumerate accounts.
+
+The security code can be set or changed from the **"الإعدادات الأمنية"** card on your
+profile — its form is hidden behind a "تغيير الرمز الأمني" toggle button and only opens
+when you click to edit.
+
 Tokens are SHA-256 hashed in `password_resets` (the raw token is never stored), expire
 after 30 minutes, and are single-use. **Never enable `LUQYA_EXPOSE_RESET_TOKEN` in
 production** — the raw token grants a full password change for its lifetime.
+
+---
+
+## Database Schema
+
+MySQL/MariaDB (InnoDB, `utf8mb4_unicode_ci`). Six tables; all foreign keys use
+`ON DELETE CASCADE` (except the intentionally standalone audit log):
+
+| Table | Columns | Purpose |
+|---|---|---|
+| `users` | 13 | Accounts; `password_hash` and `security_code_hash` are bcrypt-only, never plaintext |
+| `reports` | 17 | Lost/found reports — the heart of the system |
+| `matches` | 10 | Lost ↔ found match pairs sharing one pickup code |
+| `notifications` | 7 | In-app user notifications |
+| `activity_logs` | 6 | Standalone audit trail (no FK by design) |
+| `password_resets` | 6 | Password recovery tokens — only `SHA-256(token)` is stored (`token_hash CHAR(64)`), plus `expires_at` and a single-use `used_at` marker |
+
+See **[luqya_database_schema.txt](luqya_database_schema.txt)** for the complete
+column-by-column definition.
 
 ---
 
@@ -122,7 +154,7 @@ luqya-ai/
 ├── config/
 │   └── db.php                  # Database PDO Connection & Helper Functions
 ├── api/
-│   ├── auth.php                # API for Login, Register, Forgot Password, Logout
+│   ├── auth.php                # API for Login, Register, Forgot/Reset Password, Security Code, Logout
 │   ├── reports.php             # API for creating, listing, closing lost/found reports
 │   ├── security.php            # API for Security Officer pickup code verification & handover
 │   ├── notifications.php       # API for fetching & marking notifications
@@ -146,8 +178,8 @@ luqya-ai/
 ├── index.php                   # Main Dashboard (Metrics, Search, Feed, Grid, FAQ, About)
 ├── login.php                   # Authentication Login Page
 ├── register.php                # Authentication Registration Page
-├── forgot_password.php         # Password Reset Simulation Page
-├── profile.php                 # User Profile Page & Lifecycle Progress Tracker
+├── forgot_password.php         # Password Reset Request Page (ID + email + optional security code)
+├── profile.php                 # User Profile Page, Lifecycle Tracker & Security Settings (toggleable)
 ├── security_dashboard.php      # Security Officer Pickup Verification & Handover Dashboard
 ├── setup_db.php                # Automatic MySQL Database Setup & Seeding Script
 └── README.md                   # System Documentation

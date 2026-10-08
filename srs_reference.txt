@@ -155,9 +155,27 @@
         same user is deleted before a new one is issued, so only one can be live.
       - The response is a single generic message for every case, so the endpoint cannot
         be used to enumerate which university IDs or emails exist.
-      - Enumeration by security code is NOT supported: the endpoint accepts a university
-        ID (pattern S + 9 digits) or an institutional email only. An officer recovers
-        through their sec-*@uoh.edu.sa address.
+      - STRICT IDENTITY VERIFICATION (required, not optional): the request must supply
+        university_id AND email. The account is resolved by university ID, then the
+        email must match the registered address exactly (case-insensitive). The
+        optional security_code is checked with password_verify() against
+        security_code_hash, and is REQUIRED only when the account has one. Legacy
+        accounts created before the security-code feature (security_code_hash empty)
+        reset with university ID + email alone, so they can never be locked out.
+      - ANTI-ENUMERATION TIMING: a dummy bcrypt verification (an inert hash with no
+        matching account) runs on the no-account and no-code paths, so response timing
+        stays flat and cannot reveal whether an ID exists.
+      - ACTION 'set_security_code' (login required, rate 5 / 900 s): lets any user
+        create or replace their recovery security code after verifying current_password;
+        the code is stored only as a bcrypt hash in security_code_hash and is never
+        returned or logged. The profile page exposes it through the toggleable
+        "الإعدادات الأمنية" card.
+      - Registration (action='register') accepts an optional security_code (6-64 chars,
+        confirmed field) that is stored as a bcrypt hash for later password recovery.
+      - An officer's authentication security code (their SEC-USR-<id> login) also acts
+        as the recovery code: because security_code_hash is set for every officer, an
+        officer recovers a forgotten password with SEC-USR-<id> + registered email +
+        the code.
       - The raw token is written to the server log ONLY when the environment flag
         LUQYA_EXPOSE_RESET_TOKEN is set to 1 (isResetTokenExposedToLog() in
         config/db.php). The default and the production value is 0.
@@ -227,7 +245,7 @@
    9  role                ENUM           YES          'student'
                           values: 'student', 'security', 'admin'
   10  security_code       VARCHAR(20)    YES   UNI    LEGACY - always NULL (see note)
-  11  security_code_hash  VARCHAR(255)   YES          NULL  officer code, bcrypt
+  11  security_code_hash  VARCHAR(255)   YES          NULL  security/recovery code, bcrypt
   12  created_at          DATETIME       NO          CURRENT_TIMESTAMP
   13  updated_at          DATETIME       YES          CURRENT_TIMESTAMP ON UPDATE
 
@@ -241,8 +259,10 @@
      to NULL and stores the code only as a bcrypt hash in security_code_hash, verified
      with password_verify(). The column is therefore retained for backward
      compatibility only and is NULL for every row in the current seed data.
-   - password_hash holds the account password; security_code_hash holds the officer code.
-     Both are 60-character bcrypt digests and neither is ever stored in plaintext.
+   - password_hash holds the account password; security_code_hash holds a security code
+     (an officer's SEC-USR-<id> login code, or an optional student recovery code set via
+     set_security_code or at registration). Both are 60-character bcrypt digests and
+     neither is ever stored in plaintext.
 
 ------------------------------------------------------------------------------------------------
   4.2 reports  (17 columns) — lost and found notices
@@ -425,7 +445,14 @@
          ID or the institutional email, plus the password.
   FR-U5  The system shall store passwords only as bcrypt hashes.
   FR-U6  The system shall provide a forgot-password and reset-password flow using a
-         single-use, time-limited, hashed token.
+         single-use, time-limited, hashed token. Before issuing a token it shall resolve
+         the account by university ID, require the email to match the registered address
+         exactly, and require the security code whenever the account has one; accounts
+         without a code (legacy) shall reset with university ID + email alone.
+  FR-U6a The system shall let a logged-in user set or replace their recovery security
+         code after confirming the current password (action='set_security_code'), storing
+         only a bcrypt hash, and shall accept an optional security code (6-64 chars) at
+         registration for use in later recovery.
   FR-U7  The system shall enforce role-based access: a security officer cannot create a
          LOST report; a student cannot reach any security dashboard action.
   FR-U8  The system shall limit registration attempts to 5 per hour per client IP.
@@ -621,6 +648,7 @@
              login           10 requests /  300 s   api/auth.php
              forgot_password  5 requests /  300 s   api/auth.php
              reset_password   5 requests /  900 s   api/auth.php
+             set_security_code 5 requests /  900 s   api/auth.php
              ai_chat         30 requests /  300 s   api/ai_chat.php
              ai_search       20 requests /  300 s   api/ai_search.php
   FR-A7  IMPORTANT: every AI call shall fail gracefully. When GEMINI_API_KEY is missing
@@ -648,6 +676,10 @@
   FR-UI7 The system shall provide a FAQ section and a live activity feed.
   FR-UI8 The system shall support full Arabic (RTL) and English (LTR) presentation with a
          language toggle that switches the document direction.
+  FR-UI9 The profile page shall expose a security-settings card ("الإعدادات الأمنية")
+         whose edit form (current password + new security code) is hidden behind a toggle
+         button by default and only opens on explicit user click; cancelling hides and
+         resets the form without saving.
 
 
 ================================================================================================
@@ -773,7 +805,8 @@
       ALLOW_DB_RESET)
 
 8.3 API action inventory (as found in the code)
-    api/auth.php          register, login, forgot_password, reset_password, logout
+    api/auth.php          register, login, forgot_password, reset_password,
+                          set_security_code, logout
     api/reports.php       create, close, get, my_status, statuses, potential_matches
     api/security.php      pending_count, verify, handover, add_found, update_found,
                           delete_found, list_pending_matches, ai_analyze_matches,
@@ -889,6 +922,13 @@
       DDL even though the columns are non-nullable in practice. This document records
       them as NOT NULL, matching server behaviour. Harmless, but worth knowing if the
       SRS reproduces the DDL verbatim.
+
+D14 NEW - Seeded student accounts were created before the recovery security-code
+      feature, so users.security_code_hash is NULL for them and password reset works
+      with university ID + email alone. New registrations may set a code optionally,
+      and any user can add/replace one from the profile (set_security_code). The SRS
+      should state this two-tier rule rather than a universal code requirement, so it
+      matches the implementation (see 3.5).
 
 ================================================================================================
   END OF REFERENCE

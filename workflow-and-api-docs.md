@@ -225,18 +225,24 @@ The student may **close** any report that is not yet resolved. Closing cascades 
 matched pair via `collectMatchedReportIds()`, so both sides close together and no
 half-closed pair is left behind.
 
+The profile also hosts an **"الإعدادات الأمنية" (security settings)** card. The card
+only shows its form after clicking the "تغيير الرمز الأمني" toggle button, so the page
+stays clean; the form requires the current password and calls
+`auth.php?action=set_security_code` to set or replace the recovery code. See §1.7.
+
 ---
 
 ## 1.7 Journey F — Password recovery
 
 | # | Step | System behaviour |
 |---|---|---|
-| 1 | Student submits university ID or email | `forgot_password` |
-| 2 | **No account enumeration** | Always returns the same generic success message, whether or not the account exists |
-| 3 | Token issued | Random token generated; **only `SHA-256(token)`** is stored in `password_resets.token_hash` (`CHAR(64)`), with `expires_at` and a `used_at` marker |
-| 4 | Delivery | Server log only, and **only** when `LUQYA_EXPOSE_RESET_TOKEN=1` (default `0`) |
-| 5 | Student submits token + new password | `reset_password`, min 6 characters |
-| 6 | Consume | Token marked used; password re-hashed; user logged in |
+| 1 | Student submits university ID **and** registered email (+ security code when the account has one) | `forgot_password` |
+| 2 | **Strict identity verification** | Account resolved by university ID; the email must match the registered address exactly (case-insensitive). The security code is checked with `password_verify()` against `security_code_hash` and is required **only when the account has one** — legacy accounts created before this feature (`security_code_hash` empty) reset with ID + email alone |
+| 3 | **No account enumeration** | One generic message for every outcome; a dummy bcrypt check on the no-account / no-code paths keeps response timing flat, so the endpoint reveals nothing |
+| 4 | Token issued | Random token; **only `SHA-256(token)`** stored in `password_resets.token_hash` (`CHAR(64)`), with `expires_at` and a `used_at` marker |
+| 5 | Delivery | Server log only, and **only** when `LUQYA_EXPOSE_RESET_TOKEN=1` (default `0`) |
+| 6 | Student submits token + new password | `reset_password`, min 6 characters |
+| 7 | Consume | Token marked used; password re-hashed; user logged in |
 
 #### There is no mailer in this build
 
@@ -267,6 +273,12 @@ Security properties that hold in both modes: the raw token is never stored (only
 SHA-256 hash), it expires after **1800 s**, it is single-use, and requesting a new token
 deletes any earlier unused token for that user. The response is a single generic message
 in every case, so the endpoint cannot enumerate accounts.
+
+Because the seeded demo students were created before the security-code feature, they are
+legacy accounts and reset with university ID + email only; officers (`SEC-USR-…`, hashed
+code) and any student who sets a recovery code must supply it. A logged-in user creates
+or changes the code through `auth.php?action=set_security_code` (profile → security
+settings), and registration accepts an optional security code stored as a bcrypt hash.
 
 ---
 
@@ -407,6 +419,7 @@ leaves `active` is invisible to future matching.
 | `auth.php?action=login` | 10 | 300 s |
 | `auth.php?action=forgot_password` | 5 | 300 s |
 | `auth.php?action=reset_password` | 5 | 900 s |
+| `auth.php?action=set_security_code` | 5 | 900 s |
 | `ai_chat.php` | 30 | 300 s |
 | `ai_search.php` | 20 | 300 s |
 
@@ -493,14 +506,23 @@ Rate limit 10 / 300 s. **No auth required.**
 
 Rate limit 5 / 300 s. **No auth required.**
 
-| Field | Type | Required |
-|---|---|---|
-| `identifier` | string | ✔ (university ID or email) |
-| `csrf_token` | string | ✔ |
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `university_id` | string | ✔ | University ID (`S…`) or officer login code (`SEC-USR-…`); upper-cased |
+| `email` | string | ✔ | Registered university email; matched lower-cased against the stored address |
+| `security_code` | string | — | Required **only** when the account has one (`security_code_hash` set); ignored for legacy accounts |
+| `csrf_token` | string | ✔ | — |
+
+**Strict identity verification.** The account is resolved by university ID, then the
+supplied email must match the registered address exactly. If the account has a security
+code it is verified with `password_verify()` against `security_code_hash`; legacy
+accounts created before this feature (empty hash) pass on university ID + email alone,
+so they can never be locked out. A dummy bcrypt check runs on the no-account and
+no-code paths to keep response timing flat.
 
 **Response `200`** — identical whether or not the account exists (prevents enumeration):
 ```json
-{ "success": true, "message": "إذا كان البريد مسجلاً لدينا، فقد تم إرسال رابط الاستعادة." }
+{ "success": true, "message": "تم إرسال تعليمات إعادة تعيين كلمة المرور إلى بريدك الجامعي." }
 ```
 
 ---
@@ -518,6 +540,27 @@ Rate limit 5 / 900 s. **No auth required.**
 **Response `200`**
 ```json
 { "success": true, "message": "تم تحديث كلمة المرور بنجاح.", "redirect": "index.php" }
+```
+
+---
+
+### 2.4.5 `POST ?action=set_security_code` 🔒
+
+Rate limit 5 / 900 s. **Requires login.**
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `current_password` | string | ✔ | Verified against the account's bcrypt hash before any change |
+| `security_code` | string | ✔ | 6–64 chars; stored only as a bcrypt hash |
+| `security_code_confirm` | string | ✔ | Must equal `security_code` |
+| `csrf_token` | string | ✔ | — |
+
+Creates or replaces the user's recovery security code used by `forgot_password`. The
+code is never returned or logged.
+
+**Response `200`**
+```json
+{ "success": true, "message": "تم حفظ الرمز الأمني بنجاح." }
 ```
 
 ---
@@ -951,28 +994,29 @@ Rate limit 30 / 300 s.
 | 2 | POST | `auth.php?action=login` | — | ✔ | 10 / 300 s |
 | 3 | POST | `auth.php?action=forgot_password` | — | ✔ | 5 / 300 s |
 | 4 | POST | `auth.php?action=reset_password` | — | ✔ | 5 / 900 s |
-| 5 | POST | `auth.php?action=logout` | ✔ | ✔ | — |
-| 6 | POST | `reports.php?action=create` | ✔ | ✔ | — |
-| 7 | POST | `reports.php?action=close` | ✔ | ✔ | — |
-| 8 | GET | `reports.php?action=get` | ✔ | — | — |
-| 9 | GET | `reports.php?action=my_status` | ✔ | — | — |
-| 10 | GET | `reports.php?action=statuses` | — | — | — |
-| 11 | GET | `reports.php?action=potential_matches` | ✔ | — | — |
-| 12 | GET | `security.php?action=pending_count` | 🛡️ | — | — |
-| 13 | POST | `security.php?action=verify` | 🛡️ | ✔ | — |
-| 14 | POST | `security.php?action=handover` | 🛡️ | ✔ | — |
-| 15 | POST | `security.php?action=add_found` | 🛡️ | ✔ | — |
-| 16 | POST | `security.php?action=update_found` | 🛡️ | ✔ | — |
-| 17 | POST | `security.php?action=delete_found` | 🛡️ | ✔ | — |
-| 18 | GET | `security.php?action=list_pending_matches` | 🛡️ | — | — |
-| 19 | POST | `security.php?action=ai_analyze_matches` | 🛡️ | ✔ | — |
-| 20 | POST | `security.php?action=confirm_match` | 🛡️ | ✔ | — |
-| 21 | POST | `security.php?action=reject_match` | 🛡️ | ✔ | — |
-| 22 | GET | `notifications.php` | ✔ | — | — |
-| 23 | POST | `notifications.php?action=mark_read` | ✔ | ✔ | — |
-| 24 | POST | `vision_ai.php` | ✔ | — | — |
-| 25 | POST | `ai_search.php` | ✔ | ✔ | 20 / 300 s |
-| 26 | POST | `ai_chat.php` | ✔ | ✔ | 30 / 300 s |
+| 5 | POST | `auth.php?action=set_security_code` | ✔ | ✔ | 5 / 900 s |
+| 6 | POST | `auth.php?action=logout` | ✔ | ✔ | — |
+| 7 | POST | `reports.php?action=create` | ✔ | ✔ | — |
+| 8 | POST | `reports.php?action=close` | ✔ | ✔ | — |
+| 9 | GET | `reports.php?action=get` | ✔ | — | — |
+| 10 | GET | `reports.php?action=my_status` | ✔ | — | — |
+| 11 | GET | `reports.php?action=statuses` | — | — | — |
+| 12 | GET | `reports.php?action=potential_matches` | ✔ | — | — |
+| 13 | GET | `security.php?action=pending_count` | 🛡️ | — | — |
+| 14 | POST | `security.php?action=verify` | 🛡️ | ✔ | — |
+| 15 | POST | `security.php?action=handover` | 🛡️ | ✔ | — |
+| 16 | POST | `security.php?action=add_found` | 🛡️ | ✔ | — |
+| 17 | POST | `security.php?action=update_found` | 🛡️ | ✔ | — |
+| 18 | POST | `security.php?action=delete_found` | 🛡️ | ✔ | — |
+| 19 | GET | `security.php?action=list_pending_matches` | 🛡️ | — | — |
+| 20 | POST | `security.php?action=ai_analyze_matches` | 🛡️ | ✔ | — |
+| 21 | POST | `security.php?action=confirm_match` | 🛡️ | ✔ | — |
+| 22 | POST | `security.php?action=reject_match` | 🛡️ | ✔ | — |
+| 23 | GET | `notifications.php` | ✔ | — | — |
+| 24 | POST | `notifications.php?action=mark_read` | ✔ | ✔ | — |
+| 25 | POST | `vision_ai.php` | ✔ | — | — |
+| 26 | POST | `ai_search.php` | ✔ | ✔ | 20 / 300 s |
+| 27 | POST | `ai_chat.php` | ✔ | ✔ | 30 / 300 s |
 
 ---
 
@@ -1332,7 +1376,8 @@ backs up the invariant; it does not replace review.
 | 11 | *(resolved)* The `internal_*` response keys that survived earlier refactors are **gone**. A 2026-09-28 audit of every `jsonResponse()` call confirmed no `internal_*` keys, no debug keys, and no private data on the response surface. See §2.1. | — |
 | 12 | *(new 2026-10-02)* **Password recovery has no mailer.** `forgot_password` cannot send email, so the flow is only completable via the `LUQYA_EXPOSE_RESET_TOKEN=1` development path. | Do not write "an email is sent". Production needs a mailer or out-of-band link issuance. See §1.7 |
 | 13 | *(new 2026-10-02)* `php.ini` points `error_log` at `C:\xampp\php\logs\`, which does not exist, so PHP log output lands in `C:\xampp\apache\logs\error.log` | The dev reset-link instructions would point at a non-existent file. Documented; ideally fix the path |
-| 14 | *(new 2026-10-02)* MariaDB 10.4.32 in this XAMPP install **crashed** (`mysqld.dmp` written) on the prepared `DELETE FROM password_resets …` at `api/auth.php:201`, leaving all three of that table's indexes corrupt. `OPTIMIZE TABLE password_resets` rebuilt them. | A server bug, not an app bug — but password recovery is the trigger, and a repeat crash would re-corrupt the table. Consider upgrading MariaDB |
+| 14 | *(new 2026-10-02)* MariaDB 10.4.32 in this XAMPP install **crashed** (`mysqld.dmp` written) on the prepared `DELETE FROM password_resets …` in `auth.php`'s `forgot_password` handler, leaving all three of that table's indexes corrupt. `OPTIMIZE TABLE password_resets` rebuilt them. | A server bug, not an app bug — but password recovery is the trigger, and a repeat crash would re-corrupt the table. Consider upgrading MariaDB |
+| 15 | *(new 2026-10-08)* Recovery security codes are **two-tier by design**: the seeded demo students are legacy accounts (`security_code_hash` empty) and reset with university ID + email alone, while officers and any user who sets a code must supply it. This is intentional (nobody is locked out), but any SRS must state the rule instead of a universal-code requirement. | Documented, not a defect — keeps legacy accounts recoverable |
 
 ### Resolved since the first draft
 
