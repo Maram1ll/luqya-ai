@@ -201,8 +201,32 @@ foreach ($statements as $stmt) {
         if ($seedTable === '') {
             continue;
         }
-        // Seed only when that specific table is empty. Idempotent: once any
-        // row exists (ours or real user data) the demo rows are never added.
+
+        // users is special: the app auto-provisions the demo security officers
+        // (ensureSecurityOfficers) on ANY login attempt, so this table can hold
+        // rows before the first migration ever runs — exactly what happened on
+        // Railway, leaving the demo students missing while reports never seeded.
+        // A plain "only seed empty tables" rule would then NEVER add demo
+        // students (e.g. S202403400), breaking the demo login permanently.
+        // So we UPSERT the schema's demo accounts with INSERT IGNORE: rows that
+        // already exist (by UNIQUE university_id/email) are left untouched and
+        // only the missing demo accounts are inserted. Real rows are never
+        // modified or deleted.
+        if ($seedTable === 'users') {
+            try {
+                $upsert = preg_replace('/^INSERT\s+INTO/i', 'INSERT IGNORE INTO', ltrim($stmt));
+                $added  = (int) $pdo->exec($upsert);
+                $seeded[] = 'users';
+                migrateLog('UPSERT demo users (added: ' . $added . ')', $quiet);
+            } catch (Throwable $e) {
+                migrateLog('WARNING: seeding ' . $seedTable . ' failed (' . $e->getMessage() . ')', $quiet);
+            }
+            continue;
+        }
+
+        // All other tables: seed only when that specific table is empty.
+        // Idempotent: once any row exists (ours or real user data) the demo
+        // rows are never added.
         $count = migrateTableRowCount($pdo, $seedTable);
         if ($count > 0) {
             migrateLog('SKIP seeding ' . $seedTable . ' (already has ' . $count . ' rows)', $quiet);

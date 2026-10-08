@@ -46,7 +46,7 @@ RUN printf '%s\n' \
     'if command -v php >/dev/null 2>&1 && [ -f /var/www/html/database/migrate.php ]; then' \
     '  i=0; ok=0' \
     '  while [ "$i" -lt 10 ]; do' \
-    '    if php /var/www/html/database/migrate.php --quiet; then ok=1; break; fi' \
+    '    if php /var/www/html/database/migrate.php; then ok=1; break; fi' \
     '    echo "Luqya: migration attempt $((i+1)) failed; retrying in 3s"' \
     '    i=$((i+1)); sleep 3' \
     '  done' \
