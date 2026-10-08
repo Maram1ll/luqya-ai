@@ -182,9 +182,9 @@ function getDBConnection() {
                 PDO::ATTR_EMULATE_PREPARES => false,
             ];
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-            // Explicitly pin the connection to utf8mb4 (DSN charset already does
-            // this, this is belt-and-braces so Arabic text can never be stored
-            // or read back through a latin1/other connection).
+            // Make sure we're speaking utf8mb4 end to end. The DSN charset
+            // already asks for it; this is just a belt-and-braces safeguard so
+            // Arabic text never gets stored or read through a latin1 connection.
             $pdo->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
             $GLOBALS['luqya_db_last_error'] = null;
         } catch (PDOException $e) {

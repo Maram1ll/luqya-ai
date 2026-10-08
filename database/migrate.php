@@ -1,29 +1,27 @@
 <?php
 // Luqya AI – automatic database migration runner
 // ---------------------------------------------------------------------------
-// Applies database/schema.sql to the environment-configured database (the one
-// resolved in config/db.php: .env, Railway MYSQL_URL/MYSQLHOST..., or
-// config/config.local.php), then aligns older tables via ensureSchemaUpgrades().
+// Applies database/schema.sql to the database that config/db.php resolves
+// (real env vars, Railway's MYSQL_URL/MYSQLHOST..., or config/config.local.php),
+// then runs ensureSchemaUpgrades() to bring older tables in line.
 //
-// Safe to run repeatedly:
-//   * DDL uses CREATE TABLE IF NOT EXISTS (no-ops when tables already exist).
-//   * Seed (demo) rows are inserted into each EMPTY table only, so they are
-//     never duplicated on re-runs, real data is never overwritten, and a
-//     database whose tables exist but hold no rows (e.g. one table auto-created
-//     earlier by the app before the migration existed) still gets fully seeded
-//     on the next boot. TRUNCATE / DELETE reset statements in the dump are
-//     NEVER run at boot — they would wipe user data on every deploy.
-//   * CREATE DATABASE / USE statements are skipped: the PDO DSN already
-//     targets DB_NAME (the Railway database), so tables are created inside the
-//     configured schema rather than a hardcoded `luqya_ai`.
+// Safe to run as often as you like:
+//   * CREATE TABLE IF NOT EXISTS leaves existing tables alone.
+//   * Demo rows only go into tables that are empty, so re-runs never duplicate
+//     anything, real data is never overwritten, and a table the app created
+//     earlier (without rows) still gets seeded on the next boot. The dump's own
+//     TRUNCATE / DELETE statements are never executed here — running those at
+//     boot would wipe user data on every deploy.
+//   * CREATE DATABASE / USE are skipped too: the DSN already targets DB_NAME,
+//     so tables are created in the configured schema instead of a hardcoded one.
 //
-// Entry points:
-//   * Container/CLI:   php database/migrate.php [--quiet]
-//                      (also invoked automatically by the Docker entrypoint
-//                       before Apache starts, with retries).
-//   * Safe web route:  /database/migrate.php  – allowed only while the
-//                      database is empty; refuses once users exist unless
-//                      ALLOW_DB_RESET=1 is set.
+// Usage:
+//   * Container / CLI:   php database/migrate.php [--quiet]
+//                        (the Docker entrypoint also runs this before Apache
+//                         starts, retrying until it succeeds).
+//   * Web:               /database/migrate.php only runs while the database is
+//                        empty; once users exist it refuses unless
+//                        ALLOW_DB_RESET=1 is set.
 // ---------------------------------------------------------------------------
 
 require __DIR__ . '/../config/db.php';
@@ -33,7 +31,7 @@ $args           = isset($argv) ? $argv : [];
 $quiet          = in_array('--quiet', $args, true);
 $forceCliOrWeb  = ($isCli || getenv('ALLOW_DB_RESET') === '1') && in_array('--force', $args, true);
 
-// Web safety guard: block re-runs once the database already holds data.
+// When called over the web, refuse to run once the database already has data.
 if (!$isCli && !$forceCliOrWeb) {
     header('Content-Type: text/plain; charset=utf-8');
     try {
@@ -52,15 +50,15 @@ if (!$isCli && !$forceCliOrWeb) {
             exit(0);
         }
     } catch (Throwable $e) {
-        // Database missing/empty -> first-time setup is allowed.
+        // No database yet just means this is a first-time setup; let it through.
     }
 }
 
 /**
- * Splits an SQL text into executable statements, ignoring line comments, block
- * comments, semicolons inside quoted strings (', ", `) and backslash escapes.
- * Behaviour identical to the web installer's splitter, kept self-contained so
- * the migration runner never depends on setup_db.php.
+ * Splits an SQL script into individual statements. Ignores line comments, block
+ * comments, and semicolons that sit inside quoted strings (', ", `) or after
+ * backslash escapes. It behaves like the web installer's splitter, but is kept
+ * self-contained so the migration runner doesn't need setup_db.php.
  *
  * @return array<int,string>
  */
@@ -150,8 +148,8 @@ try {
 }
 
 /**
- * Returns the number of rows a table currently holds.
- * @return int row count, or -1 when the table does not exist / cannot be read.
+ * How many rows a table currently holds.
+ * @return int -1 if the table is missing or can't be read.
  */
 function migrateTableRowCount(PDO $pdo, string $table): int {
     try {
@@ -164,7 +162,7 @@ function migrateTableRowCount(PDO $pdo, string $table): int {
 }
 
 /**
- * Extracts the target table name of an INSERT statement.
+ * The table name an INSERT statement targets.
  */
 function migrateSeedTable(string $stmt): string {
     if (preg_match('/^INSERT\s+INTO\s+`?([A-Za-z0-9_]+)`?/i', ltrim($stmt), $m)) {
@@ -174,8 +172,8 @@ function migrateSeedTable(string $stmt): string {
 }
 
 /**
- * Parses the demo users INSERT statement (schema.sql) into a map of the
- * canonical demo user id => university_id, e.g. [1 => 'SEC-USR-1', ...].
+ * Reads the demo users INSERT (from schema.sql) and maps each demo user's
+ * canonical id to its university_id, e.g. 1 => 'SEC-USR-1'.
  *
  * @return array<int,string>
  */
@@ -192,16 +190,16 @@ function migrateDemoUserUniversities(string $stmt): array {
 }
 
 /**
- * Rewrites the user_id column of a multi-row demo seed (reports/notifications)
- * from the schema's canonical demo user ids (1..8) to the ids the demo
+ * Swaps the user_id values inside a multi-row demo seed (reports or
+ * notifications) from the schema's canonical demo ids (1..8) to the ids those
  * accounts actually hold in the target database.
  *
- * Background: the app auto-provisions demo officers (ensureSecurityOfficers) on
- * any login attempt, so on a fresh deploy the demo accounts can exist under
- * ids other than the canonical 1..8 (e.g. 24..31). Seeding reports/
- * notifications with canonical user ids then violates the users FK and the
- * whole demo seed dies on every boot (the NULL user ids are matched by the
- * UNIQUE university_id, switching only when the account exists elsewhere).
+ * Why this exists: the app auto-provisions the demo security officers the first
+ * time anyone tries to log in, so on a fresh deploy the demo accounts may live
+ * under ids like 24..31 instead of 1..8. Inserting reports/notifications with
+ * the canonical ids would trip the users foreign key, and the whole demo seed
+ * would silently fail on every boot. We match accounts by their UNIQUE
+ * university_id and only rewrite the references we can resolve.
  */
 function migrateRemapSeedUserColumn(PDO $pdo, string $stmt, string $usersStmt): string {
     $pos = stripos($stmt, 'VALUES');
@@ -279,12 +277,12 @@ $demoUsersStmt = '';
 foreach ($statements as $stmt) {
     $head = strtoupper(substr(ltrim($stmt), 0, 24));
 
-    // Skipped, never executed at boot:
-    //   * CREATE DATABASE / USE  — the DSN already targets DB_NAME, so tables
-    //     are created directly inside the configured (Railway) database.
-    //   * TRUNCATE TABLE / DELETE FROM  — destructive "reset the database"
-    //     statements from schema.sql. Running them on every boot would wipe
-    //     real user data on each deploy; seeding is idempotent instead.
+    // Statements that must never run at boot:
+    //   * CREATE DATABASE / USE — the DSN already targets DB_NAME, so tables
+    //     are created inside the configured (Railway) database.
+    //   * TRUNCATE TABLE / DELETE FROM — schema.sql's "reset the database"
+    //     statements. Running them on every deploy would wipe real user data;
+    //     the seeding below is idempotent instead.
     if (str_starts_with($head, 'CREATE DATABASE')
         || str_starts_with($head, 'USE ')
         || str_starts_with($head, 'TRUNCATE TABLE')
@@ -301,15 +299,15 @@ foreach ($statements as $stmt) {
         }
 
         // users is special: the app auto-provisions the demo security officers
-        // (ensureSecurityOfficers) on ANY login attempt, so this table can hold
-        // rows before the first migration ever runs — exactly what happened on
-        // Railway, leaving the demo students missing while reports never seeded.
-        // A plain "only seed empty tables" rule would then NEVER add demo
-        // students (e.g. S202403400), breaking the demo login permanently.
-        // So we UPSERT the schema's demo accounts with INSERT IGNORE: rows that
-        // already exist (by UNIQUE university_id/email) are left untouched and
-        // only the missing demo accounts are inserted. Real rows are never
-        // modified or deleted.
+        // (ensureSecurityOfficers) on any login attempt, so this table can hold
+        // rows before the migration has ever run — exactly what happened on
+        // Railway, where the officers existed but the demo students were missing
+        // (and reports never seeded). A plain "only seed empty tables" rule
+        // would never have added the students and would have broken the demo
+        // login for good.
+        // So the demo accounts are upserted with INSERT IGNORE: rows that
+        // already exist (uniquely identified by university_id/email) stay as-is,
+        // and only the missing accounts are added. Real rows are never modified.
         if ($seedTable === 'users') {
             $demoUsersStmt = $stmt;
             try {
@@ -323,17 +321,16 @@ foreach ($statements as $stmt) {
             continue;
         }
 
-        // All other tables: seed only when that specific table is empty.
-        // Idempotent: once any row exists (ours or real user data) the demo
-        // rows are never added.
+        // Every other table just gets seeded when it's empty. Once it holds any
+        // row — ours or real user data — the demo rows are never re-added.
         $count = migrateTableRowCount($pdo, $seedTable);
         if ($count > 0) {
             migrateLog('SKIP seeding ' . $seedTable . ' (already has ' . $count . ' rows)', $quiet);
             continue;
         }
         if ($count < 0) {
-            // Table missing at this point (should not happen after CREATE IF
-            // NOT EXISTS) — skip rather than abort the boot.
+            // The table wasn't found (unexpected after CREATE IF NOT EXISTS) —
+            // skip it rather than abort the boot.
             migrateLog('WARNING: seeding skipped, table not found: ' . $seedTable, $quiet);
             continue;
         }
@@ -359,7 +356,7 @@ foreach ($statements as $stmt) {
     }
 }
 
-// Align any pre-existing tables with the schema.sql definitions.
+// Bring any pre-existing tables up to date with what schema.sql declares.
 ensureSchemaUpgrades($pdo);
 
 migrateLog(

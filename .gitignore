@@ -4,13 +4,13 @@
 .env.*
 !.env.example
 
-# Deployment secrets file (contains real DB password + Gemini key).
-# config/config.example.php IS the tracked template and must stay committable.
+# The real credentials file (holds the actual DB password and Gemini key).
+# config/config.example.php is the tracked template and stays committable.
 config/config.local.php
 config/config.local.*.php
 config/*.local.php
 
-# Belt-and-braces: any leftover secret-shaped file anywhere in the tree.
+# Belt and braces: any secret-looking leftovers anywhere in the tree.
 *.local.php.bak
 secrets.php
 credentials.php
@@ -22,11 +22,11 @@ logs/
 # ─── Runtime / generated ──────────────────────────────────────
 # Rate-limit state and other machine-local scratch data.
 storage/
-# User-uploaded item photos (runtime/personal data). Never committed to a
-# public host; local uploads/ must also stay just that — local.
-# Exception: the demo seed photos referenced by database/schema.sql (plus the
-# folder-guard files) ARE shipped to Railway so the seeded demo reports display
-# images on the live URL. Everything else under uploads/ stays ignored.
+# User-uploaded item photos are personal/runtime data and must never be
+# committed to a public host — uploads/ stays local.
+# One exception: the demo seed photos that database/schema.sql references (and
+# the folder-guard files) are shipped to Railway so seeded demo reports show
+# their images on the live URL. Anything else under uploads/ remains ignored.
 uploads/*
 !uploads/.htaccess
 !uploads/index.html
@@ -39,15 +39,15 @@ uploads/*
 !uploads/1789600728_ea3c9a35.jpeg
 !uploads/1789662107_fe0b6bde.jpeg
 !uploads/1789662301_ecaa6269.jpeg
-# Generated deployment dump + archives must never be committed (they contain
-# real rows, including bcrypt hashes and personal data). database.sql is built
-# by the deployment step and is intentionally NOT tracked.
+# The generated deployment dump (and any archives) contains real rows — bcrypt
+# hashes, personal data — so it must never be committed. database.sql is built
+# by the deployment step and deliberately stays out of git.
 database.sql
 database.sql.gz
 /database.zip
 *.sql.gz
 *.zip
-# ...but the canonical schema IS source code and stays tracked.
+# ...though the canonical schema itself is source code and stays tracked.
 !database/schema.sql
 !database/*.sql
 

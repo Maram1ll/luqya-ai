@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# ── Strictly one MPM: prefork (required by libapache2-mod-php) ──
+# ── Apache must stay on a single MPM; libapache2-mod-php needs prefork ──
 RUN a2dismod mpm_event mpm_worker mpm_prefork || true \
     && rm -f /etc/apache2/mods-available/mpm_event.load \
            /etc/apache2/mods-available/mpm_worker.load \
@@ -10,7 +10,7 @@ RUN docker-php-ext-install pdo pdo_mysql mysqli
 
 RUN a2enmod rewrite
 
-# ── Explicit DocumentRoot + directory policy for the app ──
+# ── Give the app an explicit DocumentRoot and directory policy ──
 RUN printf 'ServerName localhost\n<Directory /var/www/html>\n    Options -Indexes\n    AllowOverride All\n    Require all granted\n</Directory>\n' > /etc/apache2/conf-available/luqya-app.conf \
     && a2enconf luqya-app \
     && sed -ri 's#^(\s*)DocumentRoot .*#\1DocumentRoot /var/www/html#' /etc/apache2/sites-enabled/000-default.conf
@@ -27,10 +27,11 @@ RUN mkdir -p /var/www/html/uploads \
 ENV PORT=80
 EXPOSE 80
 
-# ── Startup entrypoint: destroy any re-introduced non-prefork MPM files ──
-# Runs right before Apache starts. Removes mpm_event/mpm_worker from BOTH
-# mods-enabled/ and mods-available/, re-asserts prefork, then binds $PORT and
-# launches Apache. Guarantees only mpm_prefork.{load,conf} can be present.
+# ── Startup entrypoint ──
+# Runs right before Apache starts: clears any straggler mpm_event/mpm_worker
+# files out of both mods-enabled/ and mods-available/, re-asserts prefork,
+# binds $PORT, and only then launches Apache. Net effect: prefork is the only
+# MPM that can ever end up loaded.
 RUN printf '%s\n' \
     '#!/bin/sh' \
     'set -e' \
