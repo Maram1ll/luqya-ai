@@ -217,3 +217,51 @@ sure phpMyAdmin uses UTF-8 (`utf8mb4`).
 
 **Everything returns 403** → a leftover `.htaccess` from the previous site is overriding
 this one, or the host does not allow `.htaccess`. Confirm step 7 first.
+
+---
+
+## Railway (Docker) deployment — the production path
+
+The repo ships a `Dockerfile` (PHP 8.2 + Apache, prefork MPM). Railway builds directly
+from this repository — no `railway.json`, Nixpacks or Procfile needed. The git-ignored
+secrets (`.env`, `config/config.local.php`) never enter the image; everything comes from
+Railway env vars.
+
+### What happens on first boot
+
+The container entrypoint runs `php database/migrate.php --quiet` **before** Apache
+starts, retrying every 3 s up to 10 times (it tolerates a database that is still
+provisioning). That script creates any missing tables and seeds the empty demo dataset:
+8 users, 16 reports, 5 matches, notifications and an activity log. It is idempotent —
+a second or redeploy run reports `SKIP` for already-populated tables and changes nothing.
+
+### Database
+
+Add the Railway **MySQL** add-on (or any MySQL/MariaDB service) and link it to the app.
+The loader supports both forms Railway injects:
+
+- a single connection string — `DATABASE_URL` or `MYSQL_URL`
+  (`mysql://USER:PASSWORD@HOST:PORT/DBNAME`), or
+- individual vars — `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`,
+  `MYSQLDATABASE`.
+
+Also set `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`). Real env vars always win over
+`.env` / `config.local.php`, so no other configuration is required.
+
+### Demo report images
+
+The 9 photos referenced by the seeded reports are committed (alongside the
+`uploads/.htaccess` execution guard and directory index) so the demo shows images
+immediately on the live URL. Any *runtime* user upload stays git-ignored and is not
+shipped.
+
+### Do NOT use `setup_db.php` on Railway
+
+`setup_db.php` re-creates the database and expects `CREATE DATABASE` privileges that the
+add-on DB user usually does not have. `database/migrate.php` (runs automatically above)
+is the correct path: it only creates missing tables and seeds empty ones, no `CREATE
+DATABASE`, no `TRUNCATE`/`DELETE`.
+
+Verified locally: fresh migration seeds all 6 tables, demo logins
+(`S202403400`/`password123`, officers `SEC-USR-1`…`SEC-USR-9`/`security123`) verify, all
+seeded `image_url`s resolve, and re-running the migration is a no-op.

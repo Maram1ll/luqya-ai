@@ -1,0 +1,32 @@
+# ============================================================
+#  uploads/ — user-submitted images
+# ============================================================
+#  These are static files. Nothing in here may ever be executed as
+#  code, no matter what a user manages to upload. Free hosting
+#  commonly runs PHP as CGI/FPM, where php_flag is unavailable, so we
+#  use only directives that work in every configuration.
+# ============================================================
+
+Options -Indexes -ExecCGI
+
+# Block execution of anything script-shaped.
+<FilesMatch "\.(php|php[2-8]|phtml|phps|pl|py|cgi|rb|sh|asp|aspx|jsp|htaccess)$">
+    Require all denied
+</FilesMatch>
+
+# Force download-as-plain-text for anything PHP-ish that slips through.
+<IfModule mod_mime.c>
+    RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .phps
+    AddType text/plain .php .phtml .php3 .php4 .php5 .php7 .php8 .phps
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule \.(php|php[0-9]|phtml|phps|pl|py|cgi|asp|aspx|sh)$ - [F,L,NC]
+</IfModule>
+
+# Images are user content: never let a browser sniff them into something else.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Content-Disposition "inline"
+</IfModule>

@@ -24,7 +24,21 @@ logs/
 storage/
 # User-uploaded item photos (runtime/personal data). Never committed to a
 # public host; local uploads/ must also stay just that — local.
-uploads/
+# Exception: the demo seed photos referenced by database/schema.sql (plus the
+# folder-guard files) ARE shipped to Railway so the seeded demo reports display
+# images on the live URL. Everything else under uploads/ stays ignored.
+uploads/*
+!uploads/.htaccess
+!uploads/index.html
+!uploads/1789317864_photo_5848143374681050802_y.jpg
+!uploads/1789317965_photo_5848143374681050803_y.jpg
+!uploads/1789596604_3b98233e.jpg
+!uploads/1789598345_fe1e7357.jpeg
+!uploads/sec_1789599745_71d935d8.jpeg
+!uploads/sec_1789600580_e676ceb7.jpeg
+!uploads/1789600728_ea3c9a35.jpeg
+!uploads/1789662107_fe0b6bde.jpeg
+!uploads/1789662301_ecaa6269.jpeg
 # Generated deployment dump + archives must never be committed (they contain
 # real rows, including bcrypt hashes and personal data). database.sql is built
 # by the deployment step and is intentionally NOT tracked.
