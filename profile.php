@@ -351,7 +351,7 @@ function closeMyReport(id) {
       .then(data => {
         if (data.success) {
           closeOverlay();
-          showToast(data.message, 'success');
+          showToast('تم تحديث البلاغ بنجاح', 'success');
           setTimeout(() => window.location.reload(), 1000);
         } else {
           submitBtn.disabled = false;
