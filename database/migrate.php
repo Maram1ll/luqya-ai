@@ -173,10 +173,108 @@ function migrateSeedTable(string $stmt): string {
     return '';
 }
 
+/**
+ * Parses the demo users INSERT statement (schema.sql) into a map of the
+ * canonical demo user id => university_id, e.g. [1 => 'SEC-USR-1', ...].
+ *
+ * @return array<int,string>
+ */
+function migrateDemoUserUniversities(string $stmt): array {
+    $map = [];
+    if (preg_match('/\)\s*VALUES\s*(.*)$/is', $stmt, $m)) {
+        if (preg_match_all('/\(\s*([0-9]+)\s*,\s*(\x27[^\x27]*\x27|\x22[^\x22]*\x22),/is', $m[1], $rows)) {
+            foreach ($rows[1] as $i => $_id) {
+                $map[(int) $_id] = trim($rows[2][$i], "'\"");
+            }
+        }
+    }
+    return $map;
+}
+
+/**
+ * Rewrites the user_id column of a multi-row demo seed (reports/notifications)
+ * from the schema's canonical demo user ids (1..8) to the ids the demo
+ * accounts actually hold in the target database.
+ *
+ * Background: the app auto-provisions demo officers (ensureSecurityOfficers) on
+ * any login attempt, so on a fresh deploy the demo accounts can exist under
+ * ids other than the canonical 1..8 (e.g. 24..31). Seeding reports/
+ * notifications with canonical user ids then violates the users FK and the
+ * whole demo seed dies on every boot (the NULL user ids are matched by the
+ * UNIQUE university_id, switching only when the account exists elsewhere).
+ */
+function migrateRemapSeedUserColumn(PDO $pdo, string $stmt, string $usersStmt): string {
+    $pos = stripos($stmt, 'VALUES');
+    if ($pos === false) {
+        return $stmt;
+    }
+
+    $actual = [];
+    foreach (migrateDemoUserUniversities($usersStmt) as $canonicalId => $universityId) {
+        $query = $pdo->prepare('SELECT id FROM users WHERE university_id = ?');
+        $query->execute([$universityId]);
+        $real = $query->fetchColumn();
+        if ($real !== false) { $actual[$canonicalId] = (int) $real; }
+    }
+    if (!$actual) {
+        return $stmt;
+    }
+
+    $head = substr($stmt, 0, $pos + 6);
+    $body = substr($stmt, $pos + 6);
+    $out  = '';
+    $len  = strlen($body);
+    $i    = 0;
+    $inS = $inD = false;
+    $depth = 0;
+    $col   = 0;
+
+    while ($i < $len) {
+        $c = $body[$i];
+
+        if ($inS) {
+            $out .= $c;
+            if ($c === '\\' && $i + 1 < $len) { $out .= $body[$i + 1]; $i += 2; continue; }
+            if ($c === "'") { $inS = false; }
+            $i++;
+            continue;
+        }
+        if ($inD) {
+            $out .= $c;
+            if ($c === '\\' && $i + 1 < $len) { $out .= $body[$i + 1]; $i += 2; continue; }
+            if ($c === '"') { $inD = false; }
+            $i++;
+            continue;
+        }
+
+        if ($c === "'") { $inS = true; $out .= $c; $i++; continue; }
+        if ($c === '"') { $inD = true; $out .= $c; $i++; continue; }
+        if ($c === '(') { $depth++; if ($depth === 1) { $col = 0; } $out .= $c; $i++; continue; }
+        if ($c === ')') { $depth--; $out .= $c; $i++; continue; }
+        if ($c === ',' && $depth === 1) { $col++; $out .= $c; $i++; continue; }
+
+        if ($depth === 1 && $col === 1) {
+            $j = $i;
+            while ($j < $len && $body[$j] !== ',' && $body[$j] !== ')') { $j++; }
+            $token = ltrim(substr($body, $i, $j - $i));
+            $canon = (int) $token;
+            $out  .= isset($actual[$canon]) ? (string) $actual[$canon] : $token;
+            $i = $j;
+            continue;
+        }
+
+        $out .= $c;
+        $i++;
+    }
+
+    return $head . $out;
+}
+
 $sql         = file_get_contents($schemaFile);
 $statements  = migrateSplitStatements($sql);
 $dirty       = false;
 $seeded      = [];
+$demoUsersStmt = '';
 
 foreach ($statements as $stmt) {
     $head = strtoupper(substr(ltrim($stmt), 0, 24));
@@ -213,6 +311,7 @@ foreach ($statements as $stmt) {
         // only the missing demo accounts are inserted. Real rows are never
         // modified or deleted.
         if ($seedTable === 'users') {
+            $demoUsersStmt = $stmt;
             try {
                 $upsert = preg_replace('/^INSERT\s+INTO/i', 'INSERT IGNORE INTO', ltrim($stmt));
                 $added  = (int) $pdo->exec($upsert);
@@ -241,6 +340,9 @@ foreach ($statements as $stmt) {
     }
 
     try {
+        if ($isSeed && $demoUsersStmt !== '' && in_array($seedTable, ['reports', 'notifications'], true)) {
+            $stmt = migrateRemapSeedUserColumn($pdo, $stmt, $demoUsersStmt);
+        }
         $pdo->exec($stmt);
         if ($isSeed) { $seeded[] = $seedTable; }
     } catch (Throwable $e) {
